@@ -1,3 +1,5 @@
+import type { RedditListing } from "../types";
+
 interface Credentials {
   clientId: string;
   clientSecret: string;
@@ -94,7 +96,7 @@ class RedditApiClient {
   private async getSubredditModqueue(
     subredditName: string,
     after?: string
-  ): Promise<any> {
+  ): Promise<RedditListing> {
     await this.ensureAccessToken();
     const url = new URL(
       `https://oauth.reddit.com/r/${subredditName}/about/modqueue`
