@@ -1,24 +1,13 @@
-import { serve } from "bun";
-import { router } from "./api/routes";
+import { Hono } from "hono";
+import client from "./services/reddit-api-client";
 
-console.log("Starting server on port 3000...");
+const app = new Hono();
 
-serve({
-  fetch: async (request: Request) => {
-    try {
-      const url = new URL(request.url);
-      if (url.pathname.startsWith("/api")) {
-        // Delegate API requests to our router
-        return await router.handle(request);
-      }
-      // Default response for non-API routes
-      return new Response("Welcome to the Reddit Moderation Tracker", {
-        status: 200,
-      });
-    } catch (err) {
-      console.error("Error handling request:", err);
-      return new Response("Internal Server Error", { status: 500 });
-    }
-  },
-  port: 3000,
+app.get("/", (c) => c.text("Hello Bun!"));
+
+app.get("/api/me", async (c) => {
+  const me = await client.me();
+  return c.json(me);
 });
+
+export default app;
