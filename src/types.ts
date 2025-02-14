@@ -12,10 +12,15 @@ export interface ListingData {
   before: string | null;
 }
 
-export type RedditThing = {
-  kind: "t1" | "t3"; // t1 = comment, t3 = post
-  data: CommentData | PostData;
-};
+export type RedditThing =
+  | {
+      kind: "t1"; // t1 = comment, t3 = post
+      data: CommentData;
+    }
+  | {
+      kind: "t3";
+      data: PostData;
+    };
 
 export interface CommentData {
   subreddit_id: string;

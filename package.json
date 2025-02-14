@@ -13,6 +13,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "adze": "^2.2.0",
     "hono": "^4.7.1"
   }
 }
