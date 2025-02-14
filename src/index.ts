@@ -10,4 +10,11 @@ app.get("/api/me", async (c) => {
   return c.json(me);
 });
 
+app.get("/api/subreddit/:subreddit/modqueue", async (c) => {
+  const subreddit = c.req.param("subreddit");
+  const subredditClient = client.subreddit(subreddit);
+  const modqueue = await subredditClient.modqueue();
+  return c.json(modqueue);
+});
+
 export default app;
