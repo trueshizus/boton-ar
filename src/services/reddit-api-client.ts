@@ -1,5 +1,7 @@
 import type { RedditListing } from "../types";
 
+const DEFAULT_LIMIT = 100;
+
 interface Credentials {
   clientId: string;
   clientSecret: string;
@@ -95,12 +97,19 @@ class RedditApiClient {
   // Fetch the modqueue for a subreddit.
   private async getSubredditModqueue(
     subredditName: string,
-    after?: string
+    after?: string,
+    limit?: number
   ): Promise<RedditListing> {
     await this.ensureAccessToken();
     const url = new URL(
       `https://oauth.reddit.com/r/${subredditName}/about/modqueue`
     );
+
+    url.searchParams.append(
+      "limit",
+      limit?.toString() ?? DEFAULT_LIMIT.toString()
+    );
+
     if (after) {
       url.searchParams.append("after", after);
     }

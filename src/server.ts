@@ -2,7 +2,20 @@ import { Hono } from "hono";
 import client from "./services/reddit-api-client";
 import logger from "./logger";
 
+import { stream, streamText, streamSSE } from "hono/streaming";
+
 const app = new Hono();
+
+app.get("/streamText", (c) => {
+  return streamText(c, async (stream) => {
+    // Write a text with a new line ('\n').
+    await stream.writeln("Hello");
+    // Wait 1 second.
+    await stream.sleep(1000);
+    // Write a text without a new line.
+    await stream.write(`Hono!`);
+  });
+});
 
 // Get authenticated user's data.
 app.get("/api/me", async (c) => {
@@ -26,19 +39,19 @@ app.get("/api/subreddit/:subreddit/modqueue", async (c) => {
 
     const subredditClient = client.subreddit(subreddit);
     const modqueueListing = await subredditClient.modqueue(offset);
-    const after = modqueueListing.data.after;
-    const modqueue = modqueueListing.data.children.map((redditThing) => ({
-      id: redditThing.data.id,
-      author: redditThing.data.author,
-      created_utc: redditThing.data.created_utc,
-      created_at: new Date(redditThing.data.created_utc * 1000).toISOString(),
-    }));
+    // const after = modqueueListing.data.after;
+    // const modqueue = modqueueListing.data.children.map((redditThing) => ({
+    //   id: redditThing.data.id,
+    //   author: redditThing.data.author,
+    //   created_utc: redditThing.data.created_utc,
+    //   created_at: new Date(redditThing.data.created_utc * 1000).toISOString(),
+    // }));
 
-    logger.info("✅ Successfully fetched modqueue", {
-      subreddit,
-      itemCount: modqueue.length,
-    });
-    return c.json(modqueue);
+    // logger.info("✅ Successfully fetched modqueue", {
+    //   subreddit,
+    //   itemCount: modqueue.length,
+    // });
+    return c.json(modqueueListing);
   } catch (err) {
     logger.error("❌ Error fetching modqueue", {
       subreddit: c.req.param("subreddit"),
