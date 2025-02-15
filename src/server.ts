@@ -1,9 +1,10 @@
 import { Hono } from "hono";
 import logger from "./logger";
 import client from "./services/reddit-api-client";
+import { sql } from "drizzle-orm";
 
 import db from "./db";
-import { syncStatusTable } from "./db/schema";
+import { modqueueTable, syncStatusTable } from "./db/schema";
 
 const app = new Hono();
 
@@ -33,7 +34,9 @@ app.get("/api/subreddit/:subreddit/modqueue", async (c) => {
   try {
     const { offset } = c.req.query();
     const subreddit = c.req.param("subreddit");
-    logger.info("🔍 Fetching modqueue", { subreddit, offset });
+    logger.info(
+      `🔍 Fetching modqueue for ${subreddit} with offset ${offset || "empty"}`
+    );
 
     const subredditClient = client.subreddit(subreddit);
     const modqueueListing = await subredditClient.modqueue(offset);
@@ -49,8 +52,35 @@ app.get("/api/subreddit/:subreddit/modqueue", async (c) => {
 });
 
 // Poll endpoint for modqueue updates
-app.get("/api/subreddit/:subreddit/modqueue/poll", async (c) => {
-  return c.json({ message: "not implemented" });
+app.post("/api/subreddit/:subreddit/modqueue/sync", async (c) => {
+  const { subreddit } = c.req.param();
+
+  const syncStatus = await db
+    .select()
+    .from(syncStatusTable)
+    .where(sql`subreddit = ${subreddit}`);
+
+  const subredditClient = client.subreddit(subreddit);
+
+  const modqueueListing = await subredditClient.modqueue();
+
+  const modqueueItems = modqueueListing.data.children.map((item) => {
+    return {
+      subreddit,
+      thingId: item.data.name,
+      data: item.data,
+    };
+  });
+
+  await db
+    .insert(modqueueTable)
+    .values(modqueueItems)
+    .onConflictDoUpdate({
+      target: [modqueueTable.thingId],
+      set: { data: sql`excluded.data` },
+    });
+
+  return c.json({ message: "ok" });
 });
 
 // Update approve endpoint to handle cache
