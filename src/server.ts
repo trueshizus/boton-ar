@@ -39,18 +39,7 @@ app.get("/api/subreddit/:subreddit/modqueue", async (c) => {
 
     const subredditClient = client.subreddit(subreddit);
     const modqueueListing = await subredditClient.modqueue(offset);
-    // const after = modqueueListing.data.after;
-    // const modqueue = modqueueListing.data.children.map((redditThing) => ({
-    //   id: redditThing.data.id,
-    //   author: redditThing.data.author,
-    //   created_utc: redditThing.data.created_utc,
-    //   created_at: new Date(redditThing.data.created_utc * 1000).toISOString(),
-    // }));
 
-    // logger.info("✅ Successfully fetched modqueue", {
-    //   subreddit,
-    //   itemCount: modqueue.length,
-    // });
     return c.json(modqueueListing);
   } catch (err) {
     logger.error("❌ Error fetching modqueue", {
