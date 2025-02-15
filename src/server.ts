@@ -4,7 +4,11 @@ import client from "./services/reddit-api-client";
 import { sql } from "drizzle-orm";
 
 import db from "./db";
-import { modqueueTable, syncStatusTable } from "./db/schema";
+import {
+  modqueueTable,
+  syncStatusTable,
+  trackedSubredditsTable,
+} from "./db/schema";
 import { addSeedJob, getSeedJobStatus } from "./queue";
 
 const app = new Hono();
@@ -28,6 +32,13 @@ app.get("/api/me", async (c) => {
     logger.error("❌ Error fetching user info", { error: err });
     return c.json({ error: "Error fetching user info" }, 500);
   }
+});
+
+// Add a new subreddit to the tracked list.
+app.post("/api/subreddit", async (c) => {
+  const { subreddit } = await c.req.json();
+  const result = await db.insert(trackedSubredditsTable).values({ subreddit });
+  return c.json({ message: `Subreddit added to tracked list: ${subreddit}` });
 });
 
 // Get the modqueue for a specific subreddit.

@@ -4,7 +4,10 @@
   "type": "module",
   "scripts": {
     "dev": "bun --watch src/server.ts",
-    "run": "bun run src/server.ts"
+    "run": "bun run src/server.ts",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:clean": "rm -f botonar.sqlite"
   },
   "devDependencies": {
     "@types/bun": "^1.2.2",

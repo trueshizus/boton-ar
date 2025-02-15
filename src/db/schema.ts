@@ -13,7 +13,9 @@ const timestamps = {
 
 export const syncStatusTable = sqliteTable("sync_status", {
   id: integer("id").primaryKey(),
-  subreddit: text("subreddit").notNull(),
+  subreddit: text("subreddit")
+    .notNull()
+    .references(() => trackedSubredditsTable.subreddit),
   lastOffset: text("last_offset"),
   lastSyncAt: text("last_sync_at"),
   ...timestamps,
@@ -21,8 +23,17 @@ export const syncStatusTable = sqliteTable("sync_status", {
 
 export const modqueueTable = sqliteTable("modqueue", {
   id: integer("id").primaryKey(),
-  subreddit: text("subreddit").notNull(),
+  subreddit: text("subreddit")
+    .notNull()
+    .references(() => trackedSubredditsTable.subreddit),
   thingId: text("thing_id").notNull().unique(),
   data: blob({ mode: "json" }).notNull(),
+  ...timestamps,
+});
+
+export const trackedSubredditsTable = sqliteTable("tracked_subreddits", {
+  id: integer("id").primaryKey(),
+  subreddit: text("subreddit").notNull().unique(),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   ...timestamps,
 });
