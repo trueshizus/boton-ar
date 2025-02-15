@@ -10,10 +10,16 @@ BotonAr is a moderation bot for Reddit.
 git clone https://github.com/trueshizus/boton-ar.git
 ```
 
-2. Install the dependencies
+2. Start docker compose
 
 ```bash
-bun install
+docker compose up -d
 ```
 
-3. Run the bot
+3. Add a subreddit to the tracked list
+
+```bash
+curl -X POST http://localhost:3000/api/subreddit -H "Content-Type: application/json" -d '{"subreddit": "example"}'
+```
+
+## Description
