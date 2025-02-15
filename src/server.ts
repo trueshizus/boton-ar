@@ -1,20 +1,18 @@
 import { Hono } from "hono";
-import client from "./services/reddit-api-client";
 import logger from "./logger";
+import client from "./services/reddit-api-client";
 
-import { stream, streamText, streamSSE } from "hono/streaming";
+import db from "./db";
+import { syncStatusTable } from "./db/schema";
 
 const app = new Hono();
 
-app.get("/streamText", (c) => {
-  return streamText(c, async (stream) => {
-    // Write a text with a new line ('\n').
-    await stream.writeln("Hello");
-    // Wait 1 second.
-    await stream.sleep(1000);
-    // Write a text without a new line.
-    await stream.write(`Hono!`);
-  });
+app.get("/db/status", (c) => {
+  const result = db.select().from(syncStatusTable);
+
+  console.log(result);
+
+  return c.json({ message: "ok" });
 });
 
 // Get authenticated user's data.
