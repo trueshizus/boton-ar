@@ -179,3 +179,6 @@ dist
 drizzle/
 *.db
 *.db-journal
+
+# Bruno's files
+BotonAr/*
