@@ -51,8 +51,7 @@ app.get("/api/subreddit/:subreddit/modqueue", async (c) => {
   }
 });
 
-// Poll endpoint for modqueue updates
-app.post("/api/subreddit/:subreddit/modqueue/sync", async (c) => {
+app.post("/api/subreddit/:subreddit/modqueue/seed", async (c) => {
   const { subreddit } = c.req.param();
 
   const syncStatus = await db
