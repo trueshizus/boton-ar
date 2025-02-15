@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 
 import db from "./db";
 import { modqueueTable, syncStatusTable } from "./db/schema";
+import { addSeedJob, getSeedJobStatus } from "./queue";
 
 const app = new Hono();
 
@@ -53,33 +54,30 @@ app.get("/api/subreddit/:subreddit/modqueue", async (c) => {
 
 app.post("/api/subreddit/:subreddit/modqueue/seed", async (c) => {
   const { subreddit } = c.req.param();
+  logger.info("🌱 Scheduling modqueue seed", { subreddit });
 
-  const syncStatus = await db
-    .select()
-    .from(syncStatusTable)
-    .where(sql`subreddit = ${subreddit}`);
+  try {
+    const jobId = await addSeedJob(subreddit);
 
-  const subredditClient = client.subreddit(subreddit);
-
-  const modqueueListing = await subredditClient.modqueue();
-
-  const modqueueItems = modqueueListing.data.children.map((item) => {
-    return {
-      subreddit,
-      thingId: item.data.name,
-      data: item.data,
-    };
-  });
-
-  await db
-    .insert(modqueueTable)
-    .values(modqueueItems)
-    .onConflictDoUpdate({
-      target: [modqueueTable.thingId],
-      set: { data: sql`excluded.data` },
+    return c.json({
+      message: "Seed job scheduled",
+      jobId,
+      status: "pending",
     });
+  } catch (err) {
+    logger.error("❌ Error scheduling seed job", {
+      subreddit,
+      error: err,
+    });
+    return c.json({ error: "Error scheduling seed job" }, 500);
+  }
+});
 
-  return c.json({ message: "ok" });
+app.get("/api/subreddit/:subreddit/modqueue/seed/status/:jobId", async (c) => {
+  const { jobId } = c.req.param();
+  const status = await getSeedJobStatus(jobId);
+
+  return c.json(status);
 });
 
 // Update approve endpoint to handle cache
