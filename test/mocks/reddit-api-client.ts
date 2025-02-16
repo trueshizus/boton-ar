@@ -1,5 +1,6 @@
 import { mock } from "bun:test";
 import me from "../fixtures/me.json";
+import modqueue from "../fixtures/modqueue.json";
 
 export default () => ({
   default: {
@@ -14,13 +15,7 @@ export default () => ({
           children: [],
         },
       }),
-      modqueue: async () => ({
-        kind: "Listing",
-        data: {
-          after: null,
-          children: [],
-        },
-      }),
+      modqueue: async () => modqueue,
     })),
   },
 });
