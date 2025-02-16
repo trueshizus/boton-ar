@@ -1,15 +1,9 @@
 import { Hono } from "hono";
 import logger from "./logger";
 import client from "./services/reddit-api-client";
-import { sql } from "drizzle-orm";
 
 import db from "./db";
-import {
-  modqueueTable,
-  syncStatusTable,
-  trackedSubredditsTable,
-} from "./db/schema";
-import { addSeedJob, getSeedJobStatus } from "./queue";
+import { syncStatusTable, trackedSubredditsTable } from "./db/schema";
 
 const app = new Hono();
 
@@ -39,16 +33,22 @@ app.get("/api/me", async (c) => {
   }
 });
 
-// // Add a new subreddit to the tracked list.
-// app.post("/api/subreddit", async (c) => {
-//   const { subreddit } = await c.req.json();
-//   const result = await db
-//     .insert(trackedSubredditsTable)
-//     .values({ subreddit })
-//     .returning();
+// Get all tracked subreddits.
+app.get("/api/subreddits", async (c) => {
+  const result = await db.select().from(trackedSubredditsTable);
+  return c.json([]);
+});
 
-//   return c.json({ status: "success", result });
-// });
+// Add a new subreddit to the tracked list.
+app.post("/api/subreddit", async (c) => {
+  const { subreddit } = await c.req.json();
+  const result = await db
+    .insert(trackedSubredditsTable)
+    .values({ subreddit })
+    .returning();
+
+  return c.json({ status: "success", result });
+});
 
 // // Get the modqueue for a specific subreddit.
 // app.get("/api/subreddit/:subreddit/modqueue", async (c) => {
