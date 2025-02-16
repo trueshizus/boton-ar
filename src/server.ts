@@ -39,129 +39,129 @@ app.get("/api/me", async (c) => {
   }
 });
 
-// Add a new subreddit to the tracked list.
-app.post("/api/subreddit", async (c) => {
-  const { subreddit } = await c.req.json();
-  const result = await db
-    .insert(trackedSubredditsTable)
-    .values({ subreddit })
-    .returning();
+// // Add a new subreddit to the tracked list.
+// app.post("/api/subreddit", async (c) => {
+//   const { subreddit } = await c.req.json();
+//   const result = await db
+//     .insert(trackedSubredditsTable)
+//     .values({ subreddit })
+//     .returning();
 
-  return c.json({ status: "success", result });
-});
+//   return c.json({ status: "success", result });
+// });
 
-// Get the modqueue for a specific subreddit.
-app.get("/api/subreddit/:subreddit/modqueue", async (c) => {
-  try {
-    const { offset } = c.req.query();
-    const subreddit = c.req.param("subreddit");
-    logger.info(
-      `🔍 Fetching modqueue for ${subreddit} with offset ${offset || "empty"}`
-    );
+// // Get the modqueue for a specific subreddit.
+// app.get("/api/subreddit/:subreddit/modqueue", async (c) => {
+//   try {
+//     const { offset } = c.req.query();
+//     const subreddit = c.req.param("subreddit");
+//     logger.info(
+//       `🔍 Fetching modqueue for ${subreddit} with offset ${offset || "empty"}`
+//     );
 
-    const subredditClient = client.subreddit(subreddit);
-    const modqueueListing = await subredditClient.modqueue(offset);
+//     const subredditClient = client.subreddit(subreddit);
+//     const modqueueListing = await subredditClient.modqueue(offset);
 
-    return c.json(modqueueListing);
-  } catch (err) {
-    logger.error("❌ Error fetching modqueue", {
-      subreddit: c.req.param("subreddit"),
-      error: err,
-    });
-    return c.json({ error: "Error fetching modqueue" }, 500);
-  }
-});
+//     return c.json(modqueueListing);
+//   } catch (err) {
+//     logger.error("❌ Error fetching modqueue", {
+//       subreddit: c.req.param("subreddit"),
+//       error: err,
+//     });
+//     return c.json({ error: "Error fetching modqueue" }, 500);
+//   }
+// });
 
-app.post("/api/subreddit/:subreddit/modqueue/seed", async (c) => {
-  const { subreddit } = c.req.param();
-  logger.info("🌱 Scheduling modqueue seed", { subreddit });
+// app.post("/api/subreddit/:subreddit/modqueue/seed", async (c) => {
+//   const { subreddit } = c.req.param();
+//   logger.info("🌱 Scheduling modqueue seed", { subreddit });
 
-  try {
-    const jobId = await addSeedJob(subreddit);
+//   try {
+//     const jobId = await addSeedJob(subreddit);
 
-    return c.json({
-      message: "Seed job scheduled",
-      jobId,
-      status: "pending",
-    });
-  } catch (err) {
-    logger.error("❌ Error scheduling seed job", {
-      subreddit,
-      error: err,
-    });
-    return c.json({ error: "Error scheduling seed job" }, 500);
-  }
-});
+//     return c.json({
+//       message: "Seed job scheduled",
+//       jobId,
+//       status: "pending",
+//     });
+//   } catch (err) {
+//     logger.error("❌ Error scheduling seed job", {
+//       subreddit,
+//       error: err,
+//     });
+//     return c.json({ error: "Error scheduling seed job" }, 500);
+//   }
+// });
 
-app.get("/api/subreddit/:subreddit/modqueue/seed/status/:jobId", async (c) => {
-  const { jobId } = c.req.param();
-  const status = await getSeedJobStatus(jobId);
+// app.get("/api/subreddit/:subreddit/modqueue/seed/status/:jobId", async (c) => {
+//   const { jobId } = c.req.param();
+//   const status = await getSeedJobStatus(jobId);
 
-  return c.json(status);
-});
+//   return c.json(status);
+// });
 
-// Update approve endpoint to handle cache
-app.post("/api/approve/:thing", async (c) => {
-  try {
-    const thing = c.req.param("thing");
-    if (!thing.match(/^t[1-6]_[a-zA-Z0-9]+$/)) {
-      logger.warn("⚠️ Invalid thing ID format", { thing });
-      return c.json({ error: "Invalid thing ID format" }, 400);
-    }
+// // Update approve endpoint to handle cache
+// app.post("/api/approve/:thing", async (c) => {
+//   try {
+//     const thing = c.req.param("thing");
+//     if (!thing.match(/^t[1-6]_[a-zA-Z0-9]+$/)) {
+//       logger.warn("⚠️ Invalid thing ID format", { thing });
+//       return c.json({ error: "Invalid thing ID format" }, 400);
+//     }
 
-    logger.info("👍 Approving content", { thing });
-    const result = await client.approve(thing);
+//     logger.info("👍 Approving content", { thing });
+//     const result = await client.approve(thing);
 
-    logger.info("✅ Successfully approved content", { thing });
-    return c.json(result);
-  } catch (err) {
-    logger.error("❌ Error approving content", {
-      thing: c.req.param("thing"),
-      error: err,
-    });
-    return c.json({ error: "Error approving thing" }, 500);
-  }
-});
+//     logger.info("✅ Successfully approved content", { thing });
+//     return c.json(result);
+//   } catch (err) {
+//     logger.error("❌ Error approving content", {
+//       thing: c.req.param("thing"),
+//       error: err,
+//     });
+//     return c.json({ error: "Error approving thing" }, 500);
+//   }
+// });
 
-// Update remove endpoint similarly
-app.post("/api/remove/:thing", async (c) => {
-  try {
-    const thing = c.req.param("thing");
-    if (!thing.match(/^t[1-6]_[a-zA-Z0-9]+$/)) {
-      logger.warn("⚠️ Invalid thing ID format", { thing });
-      return c.json({ error: "Invalid thing ID format" }, 400);
-    }
+// // Update remove endpoint similarly
+// app.post("/api/remove/:thing", async (c) => {
+//   try {
+//     const thing = c.req.param("thing");
+//     if (!thing.match(/^t[1-6]_[a-zA-Z0-9]+$/)) {
+//       logger.warn("⚠️ Invalid thing ID format", { thing });
+//       return c.json({ error: "Invalid thing ID format" }, 400);
+//     }
 
-    logger.info("🚫 Removing content", { thing });
-    const result = await client.remove(thing);
+//     logger.info("🚫 Removing content", { thing });
+//     const result = await client.remove(thing);
 
-    logger.info("✅ Successfully removed content", { thing });
-    return c.json(result);
-  } catch (err) {
-    logger.error("❌ Error removing content", {
-      thing: c.req.param("thing"),
-      error: err,
-    });
-    return c.json({ error: "Error removing thing" }, 500);
-  }
-});
+//     logger.info("✅ Successfully removed content", { thing });
+//     return c.json(result);
+//   } catch (err) {
+//     logger.error("❌ Error removing content", {
+//       thing: c.req.param("thing"),
+//       error: err,
+//     });
+//     return c.json({ error: "Error removing thing" }, 500);
+//   }
+// });
 
-// Add rate limiting middleware
-const rateLimiter = new Map<string, number>();
-app.use("*", async (c, next) => {
-  const key = c.req.url;
-  const now = Date.now();
-  const lastRequest = rateLimiter.get(key) || 0;
+// // Add rate limiting middleware
+// const rateLimiter = new Map<string, number>();
+// app.use("*", async (c, next) => {
+//   const key = c.req.url;
+//   const now = Date.now();
+//   const lastRequest = rateLimiter.get(key) || 0;
 
-  if (now - lastRequest < 1000) {
-    logger.warn("⚠️ Rate limit exceeded", { url: key });
-    return c.json({ error: "Too many requests" }, 429);
-  }
+//   if (now - lastRequest < 1000) {
+//     logger.warn("⚠️ Rate limit exceeded", { url: key });
+//     return c.json({ error: "Too many requests" }, 429);
+//   }
 
-  rateLimiter.set(key, now);
-  await next();
-});
+//   rateLimiter.set(key, now);
+//   await next();
+// });
 
-logger.info("🚀 Starting server...");
+// logger.info("🚀 Starting server...");
 
 export default app;
