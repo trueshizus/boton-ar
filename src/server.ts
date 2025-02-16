@@ -1,10 +1,9 @@
-import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import logger from "./logger";
 import client from "./services/reddit-api-client";
 
 import db from "./db";
-import { syncStatusTable, trackedSubredditsTable } from "./db/schema";
+import { syncStatusTable } from "./db/schema";
 import subreddits from "./routes/subreddits";
 
 const app = new Hono();
@@ -80,7 +79,7 @@ app.get("/api/me", async (c) => {
 //   }
 // });
 
-// // Add rate limiting middleware
+// Add rate limiting middleware
 // const rateLimiter = new Map<string, number>();
 // app.use("*", async (c, next) => {
 //   const key = c.req.url;

@@ -4,6 +4,7 @@ import { trackedSubredditsTable } from "../db/schema";
 import { eq } from "drizzle-orm";
 import logger from "../logger";
 import client from "../services/reddit-api-client";
+import { addSeedJob, getSeedJobStatus } from "../queue";
 const app = new Hono();
 
 app.get("/", async (c) => {
@@ -77,7 +78,7 @@ app.get("/:subreddit", async (c) => {
   return c.json(existing);
 });
 
-app.get("/:subreddit/modqueue", async (c) => {
+app.get("/:subreddit/modqueue/current", async (c) => {
   try {
     const subreddit = c.req.param("subreddit");
     // Check if subreddit is being tracked
@@ -109,32 +110,31 @@ app.get("/:subreddit/modqueue", async (c) => {
   }
 });
 
-// app.post("/api/subreddit/:subreddit/modqueue/seed", async (c) => {
-//   const { subreddit } = c.req.param();
-//   logger.info("🌱 Scheduling modqueue seed", { subreddit });
+app.post("/:subreddit/modqueue/seed", async (c) => {
+  const { subreddit } = c.req.param();
+  logger.info(`🌱 Scheduling modqueue seed: ${subreddit}`);
 
-//   try {
-//     const jobId = await addSeedJob(subreddit);
+  try {
+    const jobId = await addSeedJob(subreddit);
 
-//     return c.json({
-//       message: "Seed job scheduled",
-//       jobId,
-//       status: "pending",
-//     });
-//   } catch (err) {
-//     logger.error("❌ Error scheduling seed job", {
-//       subreddit,
-//       error: err,
-//     });
-//     return c.json({ error: "Error scheduling seed job" }, 500);
-//   }
-// });
+    return c.json({
+      message: "Seed job scheduled",
+      jobId,
+      status: "pending",
+    });
+  } catch (err) {
+    logger.error(`❌ Error scheduling seed job: ${subreddit}`, {
+      error: err,
+    });
+    return c.json({ error: "Error scheduling seed job" }, 500);
+  }
+});
 
-// app.get("/api/subreddit/:subreddit/modqueue/seed/status/:jobId", async (c) => {
-//   const { jobId } = c.req.param();
-//   const status = await getSeedJobStatus(jobId);
+app.get("/api/subreddit/:subreddit/modqueue/seed/status/:jobId", async (c) => {
+  const { jobId } = c.req.param();
+  const status = await getSeedJobStatus(jobId);
 
-//   return c.json(status);
-// });
+  return c.json(status);
+});
 
 export default app;

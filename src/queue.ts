@@ -1,6 +1,8 @@
 import { Queue, Worker, QueueEvents } from "bullmq";
 import logger from "./logger";
 import client from "./services/reddit-api-client";
+import db from "./db";
+import { modqueueTable } from "./db/schema";
 const connection = {
   host: process.env.REDIS_HOST || "localhost",
   port: parseInt(process.env.REDIS_PORT || "6379"),
@@ -18,18 +20,16 @@ export const seedQueue = new Queue("modqueue-seed", {
   },
 });
 
-// Queue events
 const queueEvents = new QueueEvents("modqueue-seed", { connection });
 
 queueEvents.on("completed", ({ jobId, returnvalue }) => {
-  logger.info("Job completed", { jobId, returnvalue });
+  logger.info(`Job completed: ${jobId}, ${returnvalue}`);
 });
 
 queueEvents.on("failed", ({ jobId, failedReason }) => {
-  logger.error("Job failed", { jobId, failedReason });
+  logger.error(`Job failed: ${jobId}, ${failedReason}`);
 });
 
-// Worker processor
 const worker = new Worker(
   "modqueue-seed",
   async (job) => {
@@ -39,7 +39,6 @@ const worker = new Worker(
 
     try {
       while (true) {
-        // Update progress
         await job.updateProgress(totalProcessed);
 
         const modqueueListing = await client
@@ -49,8 +48,13 @@ const worker = new Worker(
 
         if (items.length === 0) break;
 
-        // Process items...
-        // [Previous processing code here]
+        await db.insert(modqueueTable).values(
+          items.map((item) => ({
+            subreddit,
+            thingId: item.data.name,
+            data: item,
+          }))
+        );
 
         totalProcessed += items.length;
 

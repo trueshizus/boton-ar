@@ -135,10 +135,10 @@ describe("GET /api/subreddits/:subreddit", () => {
   });
 });
 
-describe("GET /api/subreddits/:subreddit/modqueue", () => {
+describe("GET /api/subreddits/:subreddit/modqueue/current", () => {
   it("should return 404 when subreddit is not tracked", async () => {
     const req = new Request(
-      "http://localhost:3000/api/subreddits/testsubreddit/modqueue"
+      "http://localhost:3000/api/subreddits/testsubreddit/modqueue/current"
     );
     const res = await app.fetch(req);
     expect(res.status).toBe(404);
@@ -151,7 +151,7 @@ describe("GET /api/subreddits/:subreddit/modqueue", () => {
     });
 
     const req = new Request(
-      "http://localhost:3000/api/subreddits/testsubreddit/modqueue"
+      "http://localhost:3000/api/subreddits/testsubreddit/modqueue/current"
     );
     const res = await app.fetch(req);
     const json = await res.json();
