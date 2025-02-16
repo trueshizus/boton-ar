@@ -112,6 +112,16 @@ app.get("/:subreddit/modqueue/current", async (c) => {
 
 app.post("/:subreddit/modqueue/seed", async (c) => {
   const { subreddit } = c.req.param();
+  const existing = await db
+    .select()
+    .from(trackedSubredditsTable)
+    .where(eq(trackedSubredditsTable.subreddit, subreddit))
+    .limit(1);
+
+  if (existing.length === 0) {
+    return c.json({ error: "Subreddit is not being tracked" }, 404);
+  }
+
   logger.info(`🌱 Scheduling modqueue seed: ${subreddit}`);
 
   try {

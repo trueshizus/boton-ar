@@ -74,7 +74,6 @@ const worker = new Worker(
   { connection }
 );
 
-// Helper functions
 export const addSeedJob = async (subreddit: string) => {
   const job = await seedQueue.add("seed", {
     subreddit,

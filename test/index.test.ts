@@ -161,3 +161,33 @@ describe("GET /api/subreddits/:subreddit/modqueue/current", () => {
     expect(json.data.children).toHaveLength(5);
   });
 });
+
+describe("POST /api/subreddits/:subreddit/modqueue/seed", () => {
+  it("should return 404 when subreddit is not tracked", async () => {
+    const req = new Request(
+      "http://localhost:3000/api/subreddits/testsubreddit/modqueue/seed",
+      {
+        method: "POST",
+      }
+    );
+    const res = await app.fetch(req);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("should return 200 when subreddit is tracked", async () => {
+    await db.insert(trackedSubredditsTable).values({
+      subreddit: "testsubreddit",
+      isActive: true,
+    });
+
+    const req = new Request(
+      "http://localhost:3000/api/subreddits/testsubreddit/modqueue/seed",
+      {
+        method: "POST",
+      }
+    );
+    const res = await app.fetch(req);
+    expect(res.status).toBe(200);
+  });
+});
