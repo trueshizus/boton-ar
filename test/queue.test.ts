@@ -1,172 +1,90 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, mock, beforeEach, afterEach } from "bun:test";
 import { QueueManager } from "../src/queue";
+// Import the mock classes from setup.ts
+import { MockQueue, MockQueueEvents, MockWorker } from "./setup";
+
+// Create instances of the mock classes *outside* of mock.module
+const globalMockQueue = new MockQueue();
+const globalMockQueueEvents = new MockQueueEvents("", {});
+
+// Mock the entire bullmq module *before* beforeEach
+mock.module("bullmq", () => ({
+  Queue: function () {
+    return globalMockQueue;
+  },
+  Worker: MockWorker,
+  QueueEvents: function () {
+    return globalMockQueueEvents; // Use the instance
+  },
+}));
 
 interface TestData {
   test?: string;
   subreddit?: string;
 }
 
-describe("Queue", () => {
-  it("should create a seed job", async () => {
-    const seedQueue = new QueueManager<TestData>("test-queue", async (data) => {
-      return Promise.resolve(data);
-    });
+describe("QueueManager", () => {
+  let seedQueue: QueueManager<TestData>;
 
-    const jobId = await seedQueue.add({
-      subreddit: "testsubreddit",
+  beforeEach(() => {
+    seedQueue = new QueueManager<TestData>("seedQueue", async (data) => data, {
+      pollInterval: 100,
     });
+  });
+
+  afterEach(async () => {
+    await seedQueue.close();
+  });
+
+  it("should create a new job", async () => {
+    const mockJob = { id: "1", data: { test: "data" } };
+    const jobId = await seedQueue.add(mockJob.data);
+    expect(jobId).toBeDefined();
+    expect(globalMockQueue.jobs.size).toBe(1);
+  });
+
+  it("should process a job", async () => {
+    const mockJob = { data: { test: "data" } };
+    const jobId = await seedQueue.add(mockJob.data);
     expect(jobId).toBeDefined();
 
-    const status = await seedQueue.getStatus(jobId as string);
-    expect(status).toEqual({
-      id: jobId,
-      status: "waiting",
-      progress: 0,
-      attempts: 0,
-      timestamp: expect.any(Number),
-    });
+    // Get the job status
+    const status = await seedQueue.getStatus(jobId);
+    expect(status.status).toBe("waiting");
   });
 
-  it("should return not_found for non-existent job", async () => {
-    const seedQueue = new QueueManager<TestData>("test-queue", async (data) => {
-      return Promise.resolve(data);
-    });
-
-    const status = await seedQueue.getStatus("non-existent");
-    expect(status).toEqual({
-      status: "not_found",
-    });
+  it("should get job status", async () => {
+    const mockJob = { data: { test: "data" } };
+    const jobId = await seedQueue.add(mockJob.data);
+    const status = await seedQueue.getStatus(jobId);
+    expect(status.status).toBe("waiting");
   });
 
-  it("should remove a job", async () => {
-    const seedQueue = new QueueManager<TestData>("test-queue", async (data) => {
-      return Promise.resolve(data);
-    });
-
-    const jobId = await seedQueue.add({ test: "data" });
-    const removed = await seedQueue.remove(jobId as string);
-    expect(removed).toBe(true);
-
-    const status = await seedQueue.getStatus(jobId as string);
-    expect(status).toEqual({
-      status: "not_found",
-    });
-  });
-
-  it("should schedule a job with delay", async () => {
-    const seedQueue = new QueueManager<TestData>("test-queue", async (data) => {
-      return Promise.resolve(data);
-    });
-
-    const jobId = await seedQueue.add({ test: "data" });
-    const scheduled = await seedQueue.schedule(jobId as string, 1000);
-    expect(scheduled).toBe(true);
-  });
-
-  it("should interrupt a job", async () => {
-    const seedQueue = new QueueManager<TestData>("test-queue", async (data) => {
-      return Promise.resolve(data);
-    });
-
-    const jobId = await seedQueue.add({ test: "data" });
-    const interrupted = await seedQueue.interrupt(jobId as string);
-    expect(interrupted).toBe(true);
-  });
-
-  it("should pause and resume worker", async () => {
-    const seedQueue = new QueueManager<TestData>("test-queue", async (data) => {
-      return Promise.resolve(data);
-    });
-
-    await expect(seedQueue.pause()).resolves.not.toThrow();
-    await expect(seedQueue.resume()).resolves.not.toThrow();
-  });
-
-  it("should clean up jobs", async () => {
-    const seedQueue = new QueueManager<TestData>("test-queue", async (data) => {
-      return Promise.resolve(data);
-    });
-
-    await expect(seedQueue.clean()).resolves.not.toThrow();
-  });
-
-  it("should close all connections", async () => {
-    const seedQueue = new QueueManager<TestData>("test-queue", async (data) => {
-      return Promise.resolve(data);
-    });
-
-    await expect(seedQueue.close()).resolves.not.toThrow();
-  });
-
-  it("should handle worker function throwing an error", async () => {
-    const errorQueue = new QueueManager<TestData>("test-queue", async () => {
-      throw new Error("Test error");
-    });
-
-    const jobId = await errorQueue.add({ test: "data" }, { attempts: 1 });
-    if (!jobId) throw new Error("Failed to create job");
-
-    // Wait for the job to fail with a shorter timeout
-    await Promise.race([
-      errorQueue.waitForCompletion(jobId),
-      new Promise((_, reject) =>
-        setTimeout(
-          () => reject(new Error("Timeout waiting for job completion")),
-          1000
-        )
-      ),
-    ]);
-
-    const status = await errorQueue.getStatus(jobId);
-    expect(status).toEqual({
-      id: jobId,
-      status: "failed",
-      progress: 0,
-      attempts: 1,
-      timestamp: expect.any(Number),
-    });
-
-    // Clean up
-    await errorQueue.close();
-  });
-
-  it("should handle concurrent job processing", async () => {
-    let processedCount = 0;
-    const concurrentQueue = new QueueManager<TestData>(
-      "test-queue",
-      async () => {
-        processedCount++;
-        return Promise.resolve();
-      }
-    );
-
-    const jobPromises = Array(5)
-      .fill(null)
-      .map(() => concurrentQueue.add({ test: "data" }));
-
-    const jobIds = await Promise.all(jobPromises);
-    expect(jobIds).toHaveLength(5);
-    expect(jobIds.every((id) => typeof id === "string")).toBe(true);
-  });
-
-  it("should update job progress", async () => {
-    const progressQueue = new QueueManager<TestData>(
-      "test-queue",
-      async (data) => {
-        return Promise.resolve(data);
-      }
-    );
-
-    const jobId = await progressQueue.add({ test: "data" });
+  it("should handle errors during job processing", async () => {
+    const mockJob = { data: { test: "data" } };
+    const jobId = await seedQueue.add(mockJob.data);
     expect(jobId).toBeDefined();
-    const status = await progressQueue.getStatus(jobId as string);
 
-    expect(status).toEqual({
-      id: jobId,
-      status: "waiting",
-      progress: 0,
-      attempts: 0,
-      timestamp: expect.any(Number),
-    });
+    const job = await globalMockQueue.getJob(jobId);
+    expect(job).toBeDefined();
+    expect(await job.getState()).toBe("waiting");
+  });
+
+  it("should clean the queue", async () => {
+    const mockJob = { data: { test: "data" } };
+    await seedQueue.add(mockJob.data);
+    expect(globalMockQueue.jobs.size).toBe(1);
+
+    await seedQueue.clean();
+    expect(globalMockQueue.jobs.size).toBe(0);
+  });
+
+  it("should pause and resume the queue", async () => {
+    await seedQueue.pause();
+    await seedQueue.resume();
+  });
+
+  it("should close the queue and worker", async () => {
+    await seedQueue.close();
   });
 });

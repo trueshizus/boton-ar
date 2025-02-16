@@ -141,22 +141,25 @@ export class QueueManager<T = any> {
   }
 
   async clean(grace: number = 24 * 60 * 60 * 1000) {
-    // default 24h
     await this.queue.clean(grace, 20, "completed");
     await this.queue.clean(grace, 20, "failed");
+    return Promise.resolve();
   }
 
   async pause() {
     await this.worker.pause();
+    return Promise.resolve();
   }
 
   async resume() {
     await this.worker.resume();
+    return Promise.resolve();
   }
 
   async close() {
     await this.worker.close();
     await this.queue.close();
     await this.queueEvents.close();
+    return Promise.resolve();
   }
 }

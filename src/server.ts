@@ -15,8 +15,6 @@ app.get("/health", (c) => {
 app.get("/db/status", (c) => {
   const result = db.select().from(syncStatusTable);
 
-  console.log(result);
-
   return c.json({ message: "ok" });
 });
 
