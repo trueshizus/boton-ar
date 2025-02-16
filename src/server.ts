@@ -18,7 +18,6 @@ app.get("/db/status", (c) => {
   return c.json({ message: "ok" });
 });
 
-// Get authenticated user's data.
 app.get("/api/me", async (c) => {
   try {
     logger.info("🔍 Fetching authenticated user data");

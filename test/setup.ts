@@ -1,19 +1,17 @@
-import { afterAll, beforeAll, beforeEach } from "bun:test";
-import db from "../src/db";
-import { migrate } from "drizzle-orm/bun-sqlite/migrator";
+import { afterAll, beforeAll, beforeEach, mock } from "bun:test";
 import { sql } from "drizzle-orm";
-import { mock } from "bun:test";
-import { Queue, Worker, QueueEvents } from "bullmq";
-globalThis.$ADZE_ENV = "test";
+import { migrate } from "drizzle-orm/bun-sqlite/migrator";
+import db from "../src/db";
+import { trackedSubredditsTable } from "../src/db/schema";
+// globalThis.$ADZE_ENV = "test";
 
 beforeAll(() => {
   migrate(db, { migrationsFolder: "./drizzle" });
 });
 
-beforeEach(() => {
-  const queries = ["DELETE FROM tracked_subreddits"];
-
-  queries.forEach((q) => db.run(sql.raw(q)));
+beforeEach(async () => {
+  // Use Drizzle ORM for consistency
+  await db.delete(trackedSubredditsTable);
 
   // Clean up queue state between tests
   globalMockQueue.clean();
@@ -99,12 +97,12 @@ class MockQueue {
 
   async clean() {
     this.jobs.clear();
-    return Promise.resolve();
+    return Promise.resolve(undefined);
   }
 
   async close() {
     this.jobs.clear();
-    return Promise.resolve();
+    return Promise.resolve(undefined);
   }
 
   getEvents() {
@@ -118,15 +116,15 @@ class MockWorker {
   }
 
   async pause() {
-    return Promise.resolve();
+    return Promise.resolve(undefined);
   }
 
   async resume() {
-    return Promise.resolve();
+    return Promise.resolve(undefined);
   }
 
   async close() {
-    return Promise.resolve();
+    return Promise.resolve(undefined);
   }
 }
 
@@ -160,7 +158,7 @@ class MockQueueEvents {
   }
 
   async close() {
-    return Promise.resolve();
+    return Promise.resolve(undefined);
   }
 }
 
@@ -178,4 +176,4 @@ mock.module("bullmq", () => ({
 }));
 
 // Export the mock classes for use in tests
-export { MockQueue, MockWorker, MockQueueEvents };
+export { MockQueue, MockQueueEvents, MockWorker };

@@ -1,14 +1,12 @@
-import { describe, expect, it, mock, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
+import db from "../src/db";
 import { trackedSubredditsTable } from "../src/db/schema";
 import app from "../src/server";
-import db from "../src/db";
-import mockClient from "./mocks/reddit-api-client";
+import mockClient from "../test/mocks/reddit-api-client";
+// import mockTokenManager from "../test/mocks/token-manager";
 
-mock.module("../src/services/reddit-api-client", () => mockClient());
-// Clear database before each test
-beforeEach(async () => {
-  await db.delete(trackedSubredditsTable);
-});
+mock.module("../src/services/reddit-api-client", () => mockClient);
+// mock.module("../src/services/token-manager", () => mockTokenManager);
 
 describe("GET /health", () => {
   it("should return 'ok'", async () => {

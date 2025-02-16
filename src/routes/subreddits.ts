@@ -23,7 +23,9 @@ const seedQueue = new QueueManager<SeedJob>(
     let totalProcessed = 0;
 
     while (true) {
-      const modqueueListing = await client.subreddit(subreddit).modqueue(after);
+      const modqueueListing = await client.subreddit(subreddit).modqueue({
+        after,
+      });
       const items = modqueueListing.data.children;
 
       if (items.length === 0) break;
@@ -138,7 +140,9 @@ app.get("/:subreddit/modqueue/current", async (c) => {
     );
 
     const subredditClient = client.subreddit(subreddit);
-    const modqueueListing = await subredditClient.modqueue(offset);
+    const modqueueListing = await subredditClient.modqueue({
+      after: offset,
+    });
 
     return c.json(modqueueListing);
   } catch (err) {

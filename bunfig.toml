@@ -1,4 +1,4 @@
 [test]
-root = "./test"
 preload = ["./test/setup.ts"]
 coverage = false
+pattern = "**/*.test.ts"

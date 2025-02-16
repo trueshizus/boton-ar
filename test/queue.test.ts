@@ -37,10 +37,12 @@ describe("QueueManager", () => {
   });
 
   it("should create a new job", async () => {
-    const mockJob = { id: "1", data: { test: "data" } };
+    const mockJob = { data: { test: "data" } };
     const jobId = await seedQueue.add(mockJob.data);
     expect(jobId).toBeDefined();
-    expect(globalMockQueue.jobs.size).toBe(1);
+
+    const status = await seedQueue.getStatus(jobId!);
+    expect(status.status).toBe("waiting");
   });
 
   it("should process a job", async () => {
@@ -48,15 +50,16 @@ describe("QueueManager", () => {
     const jobId = await seedQueue.add(mockJob.data);
     expect(jobId).toBeDefined();
 
-    // Get the job status
-    const status = await seedQueue.getStatus(jobId);
+    const status = await seedQueue.getStatus(jobId!);
     expect(status.status).toBe("waiting");
   });
 
   it("should get job status", async () => {
     const mockJob = { data: { test: "data" } };
     const jobId = await seedQueue.add(mockJob.data);
-    const status = await seedQueue.getStatus(jobId);
+    expect(jobId).toBeDefined();
+
+    const status = await seedQueue.getStatus(jobId!);
     expect(status.status).toBe("waiting");
   });
 
@@ -65,26 +68,26 @@ describe("QueueManager", () => {
     const jobId = await seedQueue.add(mockJob.data);
     expect(jobId).toBeDefined();
 
-    const job = await globalMockQueue.getJob(jobId);
-    expect(job).toBeDefined();
-    expect(await job.getState()).toBe("waiting");
+    const status = await seedQueue.getStatus(jobId!);
+    expect(status.status).toBe("waiting");
   });
 
   it("should clean the queue", async () => {
     const mockJob = { data: { test: "data" } };
-    await seedQueue.add(mockJob.data);
-    expect(globalMockQueue.jobs.size).toBe(1);
+    const jobId = await seedQueue.add(mockJob.data);
+    expect(jobId).toBeDefined();
 
     await seedQueue.clean();
-    expect(globalMockQueue.jobs.size).toBe(0);
+    const status = await seedQueue.getStatus(jobId!);
+    expect(status.status).toBe("not_found");
   });
 
   it("should pause and resume the queue", async () => {
-    await seedQueue.pause();
-    await seedQueue.resume();
+    await expect(seedQueue.pause()).resolves.toBe(undefined);
+    await expect(seedQueue.resume()).resolves.toBe(undefined);
   });
 
   it("should close the queue and worker", async () => {
-    await seedQueue.close();
+    await expect(seedQueue.close()).resolves.toBe(undefined);
   });
 });
