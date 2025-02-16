@@ -35,8 +35,7 @@ describe("GET /api/subreddits", () => {
   });
 
   it("should return tracked subreddits when present", async () => {
-    // Insert test data
-    const result = await db.insert(trackedSubredditsTable).values({
+    await db.insert(trackedSubredditsTable).values({
       subreddit: "testsubreddit",
       isActive: true,
     });

@@ -3,6 +3,8 @@ import db from "../../src/db";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { sql } from "drizzle-orm";
 
+globalThis.$ADZE_ENV = "test";
+
 beforeAll(() => {
   migrate(db, { migrationsFolder: "./drizzle" });
 });

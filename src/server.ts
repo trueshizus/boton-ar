@@ -36,7 +36,7 @@ app.get("/api/me", async (c) => {
 // Get all tracked subreddits.
 app.get("/api/subreddits", async (c) => {
   const result = await db.select().from(trackedSubredditsTable);
-  return c.json([]);
+  return c.json(result);
 });
 
 // Add a new subreddit to the tracked list.
