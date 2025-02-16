@@ -13,6 +13,11 @@ import { addSeedJob, getSeedJobStatus } from "./queue";
 
 const app = new Hono();
 
+// add health check endpoint
+app.get("/health", (c) => {
+  return c.json({ message: "ok" });
+});
+
 app.get("/db/status", (c) => {
   const result = db.select().from(syncStatusTable);
 
