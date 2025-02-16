@@ -37,8 +37,12 @@ app.get("/api/me", async (c) => {
 // Add a new subreddit to the tracked list.
 app.post("/api/subreddit", async (c) => {
   const { subreddit } = await c.req.json();
-  const result = await db.insert(trackedSubredditsTable).values({ subreddit });
-  return c.json({ message: `Subreddit added to tracked list: ${subreddit}` });
+  const result = await db
+    .insert(trackedSubredditsTable)
+    .values({ subreddit })
+    .returning();
+
+  return c.json({ status: "success", result });
 });
 
 // Get the modqueue for a specific subreddit.
