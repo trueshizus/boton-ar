@@ -1,11 +1,51 @@
 import { Hono } from "hono";
 import db from "../db";
-import { trackedSubredditsTable } from "../db/schema";
+import { modqueueTable, trackedSubredditsTable } from "../db/schema";
 import { eq } from "drizzle-orm";
 import logger from "../logger";
 import client from "../services/reddit-api-client";
-import { addSeedJob, getSeedJobStatus } from "../queue";
+import { QueueManager } from "../queue";
+
 const app = new Hono();
+
+// Define the seed job type
+interface SeedJob {
+  subreddit: string;
+  timestamp: string;
+}
+
+// Create a queue instance for seeding
+const seedQueue = new QueueManager<SeedJob>(
+  "subreddit-seed",
+  async (data) => {
+    const { subreddit } = data;
+    let after: string | undefined = undefined;
+    let totalProcessed = 0;
+
+    while (true) {
+      const modqueueListing = await client.subreddit(subreddit).modqueue(after);
+      const items = modqueueListing.data.children;
+
+      if (items.length === 0) break;
+
+      await db.insert(modqueueTable).values(
+        items.map((item) => ({
+          subreddit,
+          thingId: item.data.name,
+          data: item,
+        }))
+      );
+
+      totalProcessed += items.length;
+
+      if (items.length < 100 || !modqueueListing.data.after) break;
+      after = modqueueListing.data.after;
+    }
+
+    return { totalProcessed };
+  },
+  { maxParallel: 2 }
+);
 
 app.get("/", async (c) => {
   const result = await db.select().from(trackedSubredditsTable);
@@ -125,7 +165,16 @@ app.post("/:subreddit/modqueue/seed", async (c) => {
   logger.info(`🌱 Scheduling modqueue seed: ${subreddit}`);
 
   try {
-    const jobId = await addSeedJob(subreddit);
+    const jobId = await seedQueue.add(
+      {
+        subreddit,
+        timestamp: new Date().toISOString(),
+      },
+      {
+        priority: 3,
+        attempts: 3,
+      }
+    );
 
     return c.json({
       message: "Seed job scheduled",
@@ -140,11 +189,15 @@ app.post("/:subreddit/modqueue/seed", async (c) => {
   }
 });
 
-app.get("/api/subreddit/:subreddit/modqueue/seed/status/:jobId", async (c) => {
+app.get("/:subreddit/modqueue/seed/status/:jobId", async (c) => {
   const { jobId } = c.req.param();
-  const status = await getSeedJobStatus(jobId);
-
+  const status = await seedQueue.getStatus(jobId);
   return c.json(status);
+});
+
+// Cleanup when the application shuts down
+process.on("SIGTERM", async () => {
+  await seedQueue.close();
 });
 
 export default app;

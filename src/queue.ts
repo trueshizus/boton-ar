@@ -1,99 +1,162 @@
 import { Queue, Worker, QueueEvents } from "bullmq";
 import logger from "./logger";
-import client from "./services/reddit-api-client";
-import db from "./db";
-import { modqueueTable } from "./db/schema";
-const connection = {
+
+interface QueueOptions {
+  pollInterval?: number;
+  maxParallel?: number;
+  maxSize?: number;
+  host?: string;
+  port?: number;
+}
+
+interface JobOptions {
+  priority?: number;
+  delay?: number;
+  attempts?: number;
+}
+
+const DEFAULT_OPTIONS: QueueOptions = {
+  pollInterval: 1000,
+  maxParallel: 1,
+  maxSize: 1000,
   host: process.env.REDIS_HOST || "localhost",
   port: parseInt(process.env.REDIS_PORT || "6379"),
 };
 
-// Queue for modqueue seeding
-export const seedQueue = new Queue("modqueue-seed", {
-  connection,
-  defaultJobOptions: {
-    attempts: 3,
-    backoff: {
-      type: "exponential",
-      delay: 1000,
-    },
-  },
-});
+export class QueueManager<T = any> {
+  private queue: Queue;
+  private worker: Worker;
+  private queueEvents: QueueEvents;
+  private processor: (data: T) => Promise<any>;
 
-const queueEvents = new QueueEvents("modqueue-seed", { connection });
+  constructor(
+    queueName: string,
+    processor: (data: T) => Promise<any>,
+    options: QueueOptions = {}
+  ) {
+    const config = { ...DEFAULT_OPTIONS, ...options };
+    const connection = {
+      host: config.host,
+      port: config.port,
+    };
 
-queueEvents.on("completed", ({ jobId, returnvalue }) => {
-  logger.info(`Job completed: ${jobId}, ${returnvalue}`);
-});
+    this.processor = processor;
+    this.queue = new Queue(queueName, {
+      connection,
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: {
+          type: "exponential",
+          delay: config.pollInterval,
+        },
+      },
+    });
 
-queueEvents.on("failed", ({ jobId, failedReason }) => {
-  logger.error(`Job failed: ${jobId}, ${failedReason}`);
-});
+    this.queueEvents = new QueueEvents(queueName, { connection });
+    this.setupEventListeners();
 
-const worker = new Worker(
-  "modqueue-seed",
-  async (job) => {
-    const { subreddit } = job.data;
-    let after: string | undefined = undefined;
-    let totalProcessed = 0;
+    this.worker = new Worker(queueName, this.processJob.bind(this), {
+      connection,
+      concurrency: config.maxParallel,
+    });
+  }
 
+  private setupEventListeners() {
+    this.queueEvents.on("completed", ({ jobId, returnvalue }) => {
+      logger.info(`Job completed: ${jobId}`, returnvalue);
+    });
+
+    this.queueEvents.on("failed", ({ jobId, failedReason }) => {
+      logger.error(`Job failed: ${jobId}`, { reason: failedReason });
+    });
+  }
+
+  private async processJob(job: any) {
     try {
-      while (true) {
-        await job.updateProgress(totalProcessed);
-
-        const modqueueListing = await client
-          .subreddit(subreddit)
-          .modqueue(after);
-        const items = modqueueListing.data.children;
-
-        if (items.length === 0) break;
-
-        await db.insert(modqueueTable).values(
-          items.map((item) => ({
-            subreddit,
-            thingId: item.data.name,
-            data: item,
-          }))
-        );
-
-        totalProcessed += items.length;
-
-        // Update progress again
-        await job.updateProgress(totalProcessed);
-
-        if (items.length < 100 || !modqueueListing.data.after) break;
-        after = modqueueListing.data.after;
-      }
-
-      return { totalProcessed };
+      return await this.processor(job.data);
     } catch (error) {
-      logger.error("Worker error", { error });
+      logger.error("Worker error", { error, jobId: job.id });
       throw error;
     }
-  },
-  { connection }
-);
+  }
 
-export const addSeedJob = async (subreddit: string) => {
-  const job = await seedQueue.add("seed", {
-    subreddit,
-    timestamp: new Date().toISOString(),
-  });
-  return job.id;
-};
+  async add(data: T, options: JobOptions = {}) {
+    const job = await this.queue.add("job", data, {
+      priority: options.priority,
+      delay: options.delay,
+      attempts: options.attempts,
+    });
+    return job.id;
+  }
 
-export const getSeedJobStatus = async (jobId: string) => {
-  const job = await seedQueue.getJob(jobId);
-  if (!job) return { status: "not_found" };
+  async remove(jobId: string) {
+    const job = await this.queue.getJob(jobId);
+    if (job) {
+      return job.remove();
+    }
+    return false;
+  }
 
-  const state = await job.getState();
-  const progress = await job.progress();
+  async schedule(jobId: string, delay: number) {
+    const job = await this.queue.getJob(jobId);
+    if (job) {
+      return job.moveToDelayed(Date.now() + delay);
+    }
+    return false;
+  }
 
-  return {
-    id: job.id,
-    status: state,
-    progress,
-    attempts: job.attemptsMade,
-    timestamp: job.timestamp,
-  };
-};
+  async interrupt(jobId: string) {
+    const job = await this.queue.getJob(jobId);
+    if (job) {
+      return job.moveToFailed({ message: "Job interrupted" });
+    }
+    return false;
+  }
+
+  async getStatus(jobId: string) {
+    const job = await this.queue.getJob(jobId);
+    if (!job) return { status: "not_found" };
+
+    const state = await job.getState();
+    const progress = await job.progress();
+
+    return {
+      id: job.id,
+      status: state,
+      progress,
+      attempts: job.attemptsMade,
+      timestamp: job.timestamp,
+    };
+  }
+
+  async waitForCompletion(jobId: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.queueEvents.once("completed", ({ jobId: completedJobId }) => {
+        if (completedJobId === jobId) resolve();
+      });
+      this.queueEvents.once("failed", ({ jobId: failedJobId }) => {
+        if (failedJobId === jobId) resolve();
+      });
+    });
+  }
+
+  async clean(grace: number = 24 * 60 * 60 * 1000) {
+    // default 24h
+    await this.queue.clean(grace, 20, "completed");
+    await this.queue.clean(grace, 20, "failed");
+  }
+
+  async pause() {
+    await this.worker.pause();
+  }
+
+  async resume() {
+    await this.worker.resume();
+  }
+
+  async close() {
+    await this.worker.close();
+    await this.queue.close();
+    await this.queueEvents.close();
+  }
+}
