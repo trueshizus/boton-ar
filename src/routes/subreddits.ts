@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import db from "../db";
 import { modqueueTable, trackedSubredditsTable } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import logger from "../logger";
 import client from "../services/reddit-api-client";
 import { QueueManager } from "../queue";
@@ -118,6 +118,43 @@ app.get("/:subreddit", async (c) => {
   }
 
   return c.json(existing);
+});
+
+app.get("/:subreddit/modqueue", async (c) => {
+  const subreddit = c.req.param("subreddit");
+  const { limit = "100", offset = "0" } = c.req.query();
+
+  const existing = await db
+    .select()
+    .from(trackedSubredditsTable)
+    .where(eq(trackedSubredditsTable.subreddit, subreddit))
+    .limit(1);
+
+  if (existing.length === 0) {
+    return c.notFound();
+  }
+
+  const modqueue = await db
+    .select()
+    .from(modqueueTable)
+    .where(eq(modqueueTable.subreddit, subreddit))
+    .limit(parseInt(limit))
+    .offset(parseInt(offset));
+
+  // Get total count for pagination info
+  const [{ count }] = await db
+    .select({ count: sql`count(*)` })
+    .from(modqueueTable)
+    .where(eq(modqueueTable.subreddit, subreddit));
+
+  return c.json({
+    items: modqueue,
+    pagination: {
+      total: Number(count),
+      offset: parseInt(offset),
+      limit: parseInt(limit),
+    },
+  });
 });
 
 app.get("/:subreddit/modqueue/current", async (c) => {

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 import db from "../src/db";
-import { trackedSubredditsTable } from "../src/db/schema";
+import { modqueueTable, trackedSubredditsTable } from "../src/db/schema";
 import app from "../src/server";
 import mockClient from "../test/mocks/reddit-api-client";
 // import mockTokenManager from "../test/mocks/token-manager";
@@ -149,6 +149,41 @@ describe("GET /api/subreddits/:subreddit", () => {
     expect(data).toHaveLength(1);
     expect(data[0].subreddit).toBe("testsubreddit");
     expect(data[0].isActive).toBe(true);
+  });
+});
+
+describe("GET /api/subreddits/:subreddit/modqueue", () => {
+  it("should return 404 when subreddit is not tracked", async () => {
+    const req = new Request(
+      "http://localhost:3000/api/subreddits/testsubreddit/modqueue"
+    );
+    const res = await app.fetch(req);
+    expect(res.status).toBe(404);
+  });
+
+  it("should return modqueue when subreddit is tracked", async () => {
+    await db.insert(trackedSubredditsTable).values({
+      id: 1,
+      subreddit: "testsubreddit",
+      isActive: true,
+    });
+
+    await db.insert(modqueueTable).values({
+      id: 1,
+      subreddit: "testsubreddit",
+      data: {},
+      thingId: "123",
+    });
+
+    const req = new Request(
+      "http://localhost:3000/api/subreddits/testsubreddit/modqueue"
+    );
+    const res = await app.fetch(req);
+    expect(res.status).toBe(200);
+
+    const data = await res.json();
+    expect(data.pagination.total).toBe(1);
+    expect(data.items).toHaveLength(1);
   });
 });
 

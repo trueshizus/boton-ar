@@ -12,12 +12,6 @@ app.get("/health", (c) => {
   return c.json({ message: "ok" });
 });
 
-app.get("/db/status", (c) => {
-  const result = db.select().from(syncStatusTable);
-
-  return c.json({ message: "ok" });
-});
-
 app.get("/api/me", async (c) => {
   try {
     logger.info("🔍 Fetching authenticated user data");

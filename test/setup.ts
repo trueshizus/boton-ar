@@ -1,9 +1,8 @@
 import { afterAll, beforeAll, beforeEach, mock } from "bun:test";
-import { sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import db from "../src/db";
 import { trackedSubredditsTable } from "../src/db/schema";
-// globalThis.$ADZE_ENV = "test";
+globalThis.$ADZE_ENV = "test";
 
 beforeAll(() => {
   migrate(db, { migrationsFolder: "./drizzle" });
