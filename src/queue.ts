@@ -64,6 +64,12 @@ export class QueueManager<T> {
       connection,
       concurrency: config.maxParallel,
     });
+    logger.info(`Queue "${queueName}" initialized.`, {
+      host: config.host,
+      port: config.port,
+      maxParallel: config.maxParallel,
+      pollInterval: config.pollInterval,
+    });
   }
 
   private setupEventListeners() {
@@ -78,6 +84,7 @@ export class QueueManager<T> {
 
   private async processJob(job: any) {
     try {
+      logger.debug(`Processing job: ${job.id}`, { data: job.data });
       return await this.processor(job.data);
     } catch (error) {
       logger.error("Worker error", { error, jobId: job.id });
@@ -86,35 +93,38 @@ export class QueueManager<T> {
   }
 
   async add(data: T, options: JobOptions = {}) {
-    const job = await this.queue.add("job", data, {
-      priority: options.priority,
-      delay: options.delay,
-      attempts: options.attempts,
-    });
+    const job = await this.queue.add("job", data, options);
+    logger.info(`Job added to queue: ${job.id}`, { data, options });
     return job.id || JOB_ID_ERROR;
   }
 
   async remove(jobId: string) {
     const job = await this.queue.getJob(jobId);
     if (job) {
+      logger.info(`Removing job: ${jobId}`);
       return job.remove();
     }
+    logger.warn(`Job not found for removal: ${jobId}`);
     return false;
   }
 
   async schedule(jobId: string, delay: number) {
     const job = await this.queue.getJob(jobId);
     if (job) {
+      logger.info(`Scheduling job: ${jobId} for ${delay}ms`);
       return job.moveToDelayed(Date.now() + delay);
     }
+    logger.warn(`Job not found for scheduling: ${jobId}`);
     return false;
   }
 
   async interrupt(jobId: string) {
     const job = await this.queue.getJob(jobId);
     if (job) {
+      logger.warn(`Interrupting job: ${jobId}`);
       return job.moveToFailed({ message: "Job interrupted" });
     }
+    logger.warn(`Job not found for interruption: ${jobId}`);
     return false;
   }
 
@@ -125,6 +135,11 @@ export class QueueManager<T> {
     const state = await job.getState();
     const progress = job.progress();
 
+    logger.debug(`Job status: ${jobId}`, {
+      status: state,
+      progress,
+      attempts: job.attemptsMade,
+    });
     return {
       id: job.id,
       status: state,
@@ -135,33 +150,44 @@ export class QueueManager<T> {
   }
 
   async waitForCompletion(jobId: string): Promise<void> {
+    logger.debug(`Waiting for completion of job: ${jobId}`);
     return new Promise((resolve, reject) => {
       this.queueEvents.once("completed", ({ jobId: completedJobId }) => {
-        if (completedJobId === jobId) resolve();
+        if (completedJobId === jobId) {
+          logger.debug(`Job completed while waiting: ${jobId}`);
+          resolve();
+        }
       });
       this.queueEvents.once("failed", ({ jobId: failedJobId }) => {
-        if (failedJobId === jobId) resolve();
+        if (failedJobId === jobId) {
+          logger.debug(`Job failed while waiting: ${jobId}`);
+          resolve(); // Resolve even on failure, as we're waiting for *completion* (either success or failure)
+        }
       });
     });
   }
 
   async clean(grace: number = 24 * 60 * 60 * 1000) {
+    logger.info(`Cleaning queue with grace period: ${grace}ms`);
     await this.queue.clean(grace, 20, "completed");
     await this.queue.clean(grace, 20, "failed");
     return Promise.resolve();
   }
 
   async pause() {
+    logger.info("Pausing worker");
     await this.worker.pause();
     return Promise.resolve();
   }
 
   async resume() {
+    logger.info("Resuming worker");
     await this.worker.resume();
     return Promise.resolve();
   }
 
   async close() {
+    logger.info("Closing queue, worker, and queue events.");
     await this.worker.close();
     await this.queue.close();
     await this.queueEvents.close();

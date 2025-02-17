@@ -18,6 +18,6 @@ beforeEach(() => {
   queries.forEach((q) => db.run(sql.raw(q)));
 });
 
-// afterAll(() => {
-//   closeDb();
-// });
+afterAll(() => {
+  closeDb();
+});
