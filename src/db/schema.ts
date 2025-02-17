@@ -32,8 +32,8 @@ export const modqueueItemsTable = sqliteTable("modqueue_items", {
   id: integer("id").notNull().primaryKey({ autoIncrement: true }),
   subreddit: text("subreddit").notNull(),
   author: text("author").notNull(),
-  permalink: text("permalink"),
   type: text("type").notNull(),
+  name: text("name").notNull(),
   raw_data: blob("raw_data", { mode: "json" }),
   ...timestamps,
 });

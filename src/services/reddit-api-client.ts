@@ -1,5 +1,6 @@
 import type { RedditListing } from "../types";
 import { tokenManager } from "./token-manager";
+import logger from "../logger";
 
 const DEFAULT_LIMIT = 100;
 
@@ -149,29 +150,43 @@ export class RedditApiClient {
   }
 
   private async obtainAccessToken(): Promise<void> {
+    logger.info("🔑 Obtaining new Reddit access token");
     const authString = `${this.credentials.clientId}:${this.credentials.clientSecret}`;
     const authHeader = "Basic " + Buffer.from(authString).toString("base64");
 
-    const response = await fetch("https://www.reddit.com/api/v1/access_token", {
-      method: "POST",
-      body: new URLSearchParams({
-        grant_type: "password",
-        username: this.credentials.username,
-        password: this.credentials.password,
-      }),
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Authorization: authHeader,
-      },
-    });
+    try {
+      const response = await fetch(
+        "https://www.reddit.com/api/v1/access_token",
+        {
+          method: "POST",
+          body: new URLSearchParams({
+            grant_type: "password",
+            username: this.credentials.username,
+            password: this.credentials.password,
+          }),
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Authorization: authHeader,
+          },
+        }
+      );
 
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Error obtaining access token: ${errText}`);
+      if (!response.ok) {
+        const errText = await response.text();
+        logger.error("❌ Failed to obtain access token", {
+          status: response.status,
+          error: errText,
+        });
+        throw new Error(`Error obtaining access token: ${errText}`);
+      }
+
+      const data = await response.json();
+      await tokenManager.set(data.access_token, data.expires_in);
+      logger.info("✅ Successfully obtained new access token");
+    } catch (error) {
+      logger.error("❌ Error during token acquisition", { error });
+      throw error;
     }
-
-    const data = await response.json();
-    await tokenManager.set(data.access_token, data.expires_in);
   }
 
   private async ensureAccessToken(): Promise<string> {
@@ -207,23 +222,50 @@ export class RedditApiClient {
       });
     }
 
+    logger.debug("🌐 Making Reddit API request", {
+      method,
+      endpoint,
+      params: params ? JSON.stringify(params) : undefined,
+    });
+
     const headers = await this.getAuthHeaders();
     if (method === "POST" && body) {
       headers["Content-Type"] = "application/x-www-form-urlencoded";
     }
 
-    const response = await fetch(url.toString(), {
-      method,
-      headers,
-      body: method === "POST" ? body : undefined,
-    });
+    try {
+      const response = await fetch(url.toString(), {
+        method,
+        headers,
+        body: method === "POST" ? body : undefined,
+      });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`API Error (${response.status}): ${errText}`);
+      logger.debug("📨 Received API response", {
+        status: response.status,
+        endpoint,
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        logger.error("❌ API request failed", {
+          status: response.status,
+          endpoint,
+          error: errText,
+        });
+        throw new Error(`API Error (${response.status}): ${errText}`);
+      }
+
+      const data = await response.json();
+      logger.debug("✅ API request completed successfully", { endpoint });
+      return data;
+    } catch (error) {
+      logger.error("❌ API request error", {
+        endpoint,
+        error,
+        method,
+      });
+      throw error;
     }
-
-    return response.json();
   }
 
   // Fetch the modqueue for a subreddit.
@@ -245,29 +287,51 @@ export class RedditApiClient {
 
   // Get information about the authenticated user.
   async me(): Promise<any> {
-    return this.request("/api/v1/me");
+    logger.info("👤 Fetching authenticated user information");
+    try {
+      const response = await this.request("/api/v1/me");
+      logger.info("✅ Successfully retrieved user information");
+      return response;
+    } catch (error) {
+      logger.error("❌ Failed to fetch user information", { error });
+      throw error;
+    }
   }
 
   // Approve a thing (e.g. a post or comment) by its fullname.
   async approve(thingName: string): Promise<any> {
-    const response = await this.request(
-      "/api/approve",
-      "POST",
-      undefined,
-      new URLSearchParams({ id: thingName })
-    );
-    return response;
+    logger.info("👍 Approving content", { thingName });
+    try {
+      const response = await this.request(
+        "/api/approve",
+        "POST",
+        undefined,
+        new URLSearchParams({ id: thingName })
+      );
+      logger.info("✅ Successfully approved content", { thingName });
+      return response;
+    } catch (error) {
+      logger.error("❌ Failed to approve content", { thingName, error });
+      throw error;
+    }
   }
 
   // Remove a thing (e.g. a post or comment) by its fullname.
   async remove(thingName: string): Promise<any> {
-    const response = await this.request(
-      "/api/remove",
-      "POST",
-      undefined,
-      new URLSearchParams({ id: thingName })
-    );
-    return response;
+    logger.info("🚫 Removing content", { thingName });
+    try {
+      const response = await this.request(
+        "/api/remove",
+        "POST",
+        undefined,
+        new URLSearchParams({ id: thingName })
+      );
+      logger.info("✅ Successfully removed content", { thingName });
+      return response;
+    } catch (error) {
+      logger.error("❌ Failed to remove content", { thingName, error });
+      throw error;
+    }
   }
 
   // Return an object with methods to interact with a subreddit.

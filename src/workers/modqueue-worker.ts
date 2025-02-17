@@ -44,7 +44,7 @@ export const initialSyncProcessor = async (data: InitialSyncJobData) => {
       const valuesToInsert = modqueueData.data.children.map((item) => ({
         subreddit,
         author: item.data.author,
-        permalink: item.data.permalink,
+        name: item.data.name,
         type: item.kind,
         raw_data: item,
       }));
@@ -123,26 +123,22 @@ export const updateSyncProcessor = async (data: UpdateSyncJobData) => {
 
     if (modqueueData.data.children.length > 0) {
       // Check which items are actually new
-      const permalinks = modqueueData.data.children.map(
-        (item) => item.data.permalink
-      );
+      const names = modqueueData.data.children.map((item) => item.data.name);
 
       const existingItems = await db
-        .select({ permalink: modqueueItemsTable.permalink })
+        .select({ name: modqueueItemsTable.name })
         .from(modqueueItemsTable)
         .where(
           and(
             eq(modqueueItemsTable.subreddit, subreddit),
-            inArray(modqueueItemsTable.permalink, permalinks)
+            inArray(modqueueItemsTable.name, names)
           )
         );
 
-      const existingPermalinks = new Set(
-        existingItems.map((item) => item.permalink)
-      );
+      const existingNames = new Set(existingItems.map((item) => item.name));
 
       const newItems = modqueueData.data.children.filter(
-        (item) => !existingPermalinks.has(item.data.permalink)
+        (item) => !existingNames.has(item.data.name)
       );
 
       if (newItems.length > 0) {
@@ -151,7 +147,7 @@ export const updateSyncProcessor = async (data: UpdateSyncJobData) => {
         const valuesToInsert = newItems.map((item) => ({
           subreddit,
           author: item.data.author,
-          permalink: item.data.permalink,
+          name: item.data.name,
           type: item.kind,
           raw_data: item,
         }));
