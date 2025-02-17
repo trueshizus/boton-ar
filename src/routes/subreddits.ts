@@ -115,6 +115,26 @@ app.delete("/", async (c) => {
   }
 
   try {
+    // First, remove any pending or recurring jobs for this subreddit
+    logger.info(`Removing queue jobs for subreddit: ${subreddit}`);
+
+    // Get all jobs from both queues and remove them
+    const jobs = await Promise.all([
+      initialSyncQueue.getJobs(),
+      updateSyncQueue.getJobs(),
+    ]);
+
+    // Remove jobs that match this subreddit
+    await Promise.all(
+      jobs.flat().map(async (job) => {
+        if (job.data.subreddit === subreddit) {
+          logger.debug(`Removing job ${job.id} for ${subreddit}`);
+          await job.remove();
+        }
+      })
+    );
+
+    // Then proceed with database cleanup in a transaction
     await db.transaction(async (tx) => {
       // First delete all modqueue items
       await tx

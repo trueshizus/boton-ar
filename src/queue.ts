@@ -193,4 +193,41 @@ export class QueueManager<T> {
     await this.queueEvents.close();
     return Promise.resolve();
   }
+
+  async getJobs() {
+    try {
+      // Get all waiting and active jobs
+      const waitingJobs = await this.queue.getWaiting();
+      const activeJobs = await this.queue.getActive();
+      const delayedJobs = await this.queue.getDelayed();
+
+      // Also get any recurring jobs
+      const repeatableJobs = await this.queue.getRepeatableJobs();
+
+      // Remove any repeatable jobs from the list
+      await Promise.all(
+        repeatableJobs.map((job) => this.queue.removeRepeatableByKey(job.key))
+      );
+
+      return [...waitingJobs, ...activeJobs, ...delayedJobs];
+    } catch (error) {
+      logger.error("Error getting jobs", { error });
+      return [];
+    }
+  }
+
+  async removeJob(jobId: string) {
+    try {
+      const job = await this.queue.getJob(jobId);
+      if (job) {
+        await job.remove();
+        logger.debug(`Removed job ${jobId}`);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      logger.error("Error removing job", { error, jobId });
+      return false;
+    }
+  }
 }
