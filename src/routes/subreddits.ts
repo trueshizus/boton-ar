@@ -1,11 +1,7 @@
+import { and, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import db from "../db";
-import {
-  modqueueItemsTable,
-  trackedSubredditsTable,
-  syncStatusTable,
-} from "../db/schema";
-import { eq, sql, exists, and } from "drizzle-orm";
+import { modqueueItemsTable, trackedSubredditsTable } from "../db/schema";
 import logger from "../logger";
 import client from "../services/reddit-api-client";
 import { modqueueQueue } from "../workers/modqueue-worker";

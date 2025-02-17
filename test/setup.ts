@@ -1,8 +1,7 @@
-import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { afterAll, beforeAll, beforeEach } from "bun:test";
-import db, { closeDb } from "../src/db";
 import { sql } from "drizzle-orm";
-import { trackedSubredditsTable } from "../src/db/schema";
+import { migrate } from "drizzle-orm/bun-sqlite/migrator";
+import db, { closeDb } from "../src/db";
 globalThis.$ADZE_ENV = "test";
 
 beforeAll(async () => {
@@ -19,6 +18,6 @@ beforeEach(() => {
   queries.forEach((q) => db.run(sql.raw(q)));
 });
 
-afterAll(() => {
-  closeDb();
-});
+// afterAll(() => {
+//   closeDb();
+// });
