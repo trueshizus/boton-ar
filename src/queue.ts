@@ -29,7 +29,7 @@ const DEFAULT_OPTIONS: QueueOptions = {
 };
 
 export class QueueManager<T> {
-  private queue: Queue;
+  readonly queue: Queue;
   private worker: Worker;
   private queueEvents: QueueEvents;
   private processor: (data: T) => Promise<any>;

@@ -57,23 +57,6 @@ export const initialSyncProcessor = async (data: InitialSyncJobData) => {
     }
 
     if (modqueueData.data.after) {
-      // Update or insert sync status
-      if (syncStatus.length > 0) {
-        await db
-          .update(syncStatusTable)
-          .set({
-            last_offset: modqueueData.data.after,
-            last_sync_at: new Date().toISOString(),
-          })
-          .where(eq(syncStatusTable.subreddit, subreddit));
-      } else {
-        await db.insert(syncStatusTable).values({
-          subreddit: subreddit,
-          last_offset: modqueueData.data.after,
-          last_sync_at: new Date().toISOString(),
-        });
-      }
-
       // Queue next page with delay
       await initialSyncQueue.add(
         { subreddit },
@@ -84,7 +67,21 @@ export const initialSyncProcessor = async (data: InitialSyncJobData) => {
       logger.info(
         `Initial sync completed for ${subreddit}, setting up recurring updates`
       );
-      await updateSyncQueue.add({ subreddit }, { repeat: { every: 5000 } });
+      await updateSyncQueue.queue.upsertJobScheduler(
+        `update-${subreddit}`, // unique scheduler id for this subreddit
+        { every: 5000 }, // run every 5 seconds
+        {
+          name: "subreddit-update",
+          data: { subreddit },
+          opts: {
+            attempts: 3,
+            backoff: {
+              type: "exponential",
+              delay: 1000,
+            },
+          },
+        }
+      );
     }
   } catch (error) {
     logger.error("Error in initialSyncProcessor", {
