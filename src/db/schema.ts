@@ -17,7 +17,6 @@ export const syncStatusTable = sqliteTable("sync_status", {
     .notNull()
     .references(() => trackedSubredditsTable.subreddit),
   last_offset: text("last_offset"),
-  last_sync_at: text("last_sync_at"),
   ...timestamps,
 });
 

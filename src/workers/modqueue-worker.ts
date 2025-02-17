@@ -1,7 +1,7 @@
 import { QueueManager } from "../queue";
 import redditClient from "../services/reddit-api-client";
 
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, desc } from "drizzle-orm";
 import db from "../db";
 import { modqueueItemsTable, syncStatusTable } from "../db/schema";
 import logger from "../logger";
@@ -24,7 +24,9 @@ export const initialSyncProcessor = async (data: InitialSyncJobData) => {
     const syncStatus = await db
       .select()
       .from(syncStatusTable)
-      .where(eq(syncStatusTable.subreddit, subreddit));
+      .where(eq(syncStatusTable.subreddit, subreddit))
+      .orderBy(desc(syncStatusTable.created_at))
+      .limit(1);
 
     const lastOffset = syncStatus[0]?.last_offset ?? undefined;
     logger.debug(`Last offset for initial sync of ${subreddit}: ${lastOffset}`);
@@ -57,6 +59,11 @@ export const initialSyncProcessor = async (data: InitialSyncJobData) => {
     }
 
     if (modqueueData.data.after) {
+      await db.insert(syncStatusTable).values({
+        subreddit,
+        last_offset: modqueueData.data.after,
+      });
+
       // Queue next page with delay
       await initialSyncQueue.add(
         { subreddit },
@@ -65,11 +72,12 @@ export const initialSyncProcessor = async (data: InitialSyncJobData) => {
     } else {
       // Initial sync complete, set up recurring updates
       logger.info(
-        `Initial sync completed for ${subreddit}, setting up recurring updates`
+        `Initial sync completed for ${subreddit}, setting up update scheduler`
       );
+
       await updateSyncQueue.queue.upsertJobScheduler(
-        `update-${subreddit}`, // unique scheduler id for this subreddit
-        { every: 5000 }, // run every 5 seconds
+        `update-${subreddit}`,
+        { every: 5000 },
         {
           name: "subreddit-update",
           data: { subreddit },
@@ -98,10 +106,13 @@ export const updateSyncProcessor = async (data: UpdateSyncJobData) => {
     const { subreddit } = data;
     logger.debug(`Running update sync for subreddit: ${subreddit}`);
 
+    // Get most recent sync status
     const syncStatus = await db
       .select()
       .from(syncStatusTable)
-      .where(eq(syncStatusTable.subreddit, subreddit));
+      .where(eq(syncStatusTable.subreddit, subreddit))
+      .orderBy(desc(syncStatusTable.created_at))
+      .limit(1);
 
     const lastOffset = syncStatus[0]?.last_offset ?? undefined;
 
@@ -111,7 +122,7 @@ export const updateSyncProcessor = async (data: UpdateSyncJobData) => {
     });
 
     if (modqueueData.data.children.length > 0) {
-      // Check which items are actually new by looking up their permalinks
+      // Check which items are actually new
       const permalinks = modqueueData.data.children.map(
         (item) => item.data.permalink
       );
@@ -154,19 +165,14 @@ export const updateSyncProcessor = async (data: UpdateSyncJobData) => {
       }
     }
 
-    // Always update the last_offset and last_sync_at
-    // This helps maintain the pagination position even when no new items are found
     if (modqueueData.data.after) {
-      await db
-        .update(syncStatusTable)
-        .set({
-          last_offset: modqueueData.data.after,
-          last_sync_at: new Date().toISOString(),
-        })
-        .where(eq(syncStatusTable.subreddit, subreddit));
+      await db.insert(syncStatusTable).values({
+        subreddit,
+        last_offset: modqueueData.data.after,
+      });
 
       logger.debug(
-        `Updated sync status for ${subreddit}, new offset: ${modqueueData.data.after}`
+        `Created new sync status for ${subreddit}, offset: ${modqueueData.data.after}`
       );
     }
   } catch (error) {
