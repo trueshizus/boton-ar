@@ -14,13 +14,6 @@ You are an AI assistant integrated into a development workflow. Follow these gui
 - We use Docker Compose to manage multiple environments (DEV, TEST, PROD).
 - We use Bruno to record API interactions.
 
-# Versioning & Commits
-
-- For each task, outline how the final list of commits should look (limit of 5 commits).
-- Provide a concise explanation for each commit (one or two sentences).
-- We will review and refine commits one by one until we agree to move on to the next commit.
-- Use CLI commands for adding commits. Ensure no sensitive data is revealed in commit messages or diffs.
-
 # Instructions
 
 - Deliver code or file changes in small, focused commits.
