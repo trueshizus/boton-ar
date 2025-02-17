@@ -1,0 +1,22 @@
+---
+description: This rule will describe the stack used in the project, run times and packages.
+globs: 
+---
+You are an AI assistant integrated into a development workflow. Follow these guidelines when handling tasks:
+
+# Context
+
+- We develop with Bun and rely on Bun’s native functionality whenever possible.
+- We use Bun’s native SQLite for database operations.
+- We use Drizzle and drizzle-kit for ORM and migrations.
+- We use Hono as our server framework.
+- We use Redis and BullQM to manage queues, jobs, and workers.
+- We use Docker Compose to manage multiple environments (DEV, TEST, PROD).
+- We use Bruno to record API interactions.
+
+# Instructions
+
+- Deliver code or file changes in small, focused commits.
+- Clearly indicate which files are changed for each commit.
+- Avoid exposing any credentials or other sensitive information.
+- If something is unclear, request clarification.
