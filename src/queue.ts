@@ -1,6 +1,8 @@
 import { Queue, Worker, QueueEvents } from "bullmq";
 import logger from "./logger";
 
+const JOB_ID_ERROR = -1;
+
 interface QueueOptions {
   pollInterval?: number;
   maxParallel?: number;
@@ -13,6 +15,9 @@ interface JobOptions {
   priority?: number;
   delay?: number;
   attempts?: number;
+  repeat?: {
+    every: number;
+  };
 }
 
 const DEFAULT_OPTIONS: QueueOptions = {
@@ -23,7 +28,7 @@ const DEFAULT_OPTIONS: QueueOptions = {
   port: parseInt(process.env.REDIS_PORT || "6379"),
 };
 
-export class QueueManager<T = any> {
+export class QueueManager<T> {
   private queue: Queue;
   private worker: Worker;
   private queueEvents: QueueEvents;
@@ -86,7 +91,7 @@ export class QueueManager<T = any> {
       delay: options.delay,
       attempts: options.attempts,
     });
-    return job.id;
+    return job.id || JOB_ID_ERROR;
   }
 
   async remove(jobId: string) {
@@ -118,7 +123,7 @@ export class QueueManager<T = any> {
     if (!job) return { status: "not_found" };
 
     const state = await job.getState();
-    const progress = await job.progress();
+    const progress = job.progress();
 
     return {
       id: job.id,

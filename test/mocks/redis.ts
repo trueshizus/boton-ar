@@ -1,4 +1,5 @@
 import { beforeAll, afterAll, afterEach } from "bun:test";
+import type { JobsOptions } from "bullmq";
 
 interface QueueJob {
   id: string;
@@ -13,7 +14,7 @@ interface QueueJob {
   failedReason?: string;
 }
 
-class MockQueue {
+export class MockQueue {
   private jobs: Map<string, QueueJob> = new Map();
   private jobCounter = 0;
   private name: string;
@@ -72,6 +73,10 @@ class MockQueue {
     };
   }
 
+  async clean() {
+    this.jobs.clear();
+  }
+
   private async remove(id: string) {
     return this.jobs.delete(id);
   }
@@ -103,21 +108,40 @@ class MockQueue {
     return this.jobs.get(id)?.progress || 0;
   }
 
-  async clean(grace: number, limit: number, type: string) {
-    const now = Date.now();
-    for (const [id, job] of this.jobs.entries()) {
-      if (job.status === type && now - job.timestamp > grace) {
-        this.jobs.delete(id);
-      }
-    }
-  }
-
   async close() {
     this.jobs.clear();
   }
+
+  async getStatus(jobId: string) {
+    const job = this.jobs.get(jobId);
+    if (!job) {
+      return { status: "not_found" };
+    }
+    return { status: job.status };
+  }
+
+  async processNextJob(error?: Error) {
+    if (this.jobs.size === 0) {
+      return;
+    }
+
+    const job = this.jobs.values().next().value;
+    if (!job) {
+      return;
+    }
+
+    if (error) {
+      job.failedReason = error.message;
+      job.returnvalue = null;
+      MockQueueEvents.emit("failed", job.id, error.message);
+    } else {
+      job.returnvalue = { result: "success" };
+      MockQueueEvents.emit("completed", job.id, job.returnvalue);
+    }
+  }
 }
 
-class MockWorker {
+export class MockWorker {
   private queue: MockQueue;
   private processor: Function;
   private running: boolean = false;
@@ -142,7 +166,7 @@ class MockWorker {
   }
 }
 
-class MockQueueEvents {
+export class MockQueueEvents {
   private listeners: Map<string, Function[]> = new Map();
   private name: string;
 
@@ -160,12 +184,10 @@ class MockQueueEvents {
   async close() {
     this.listeners.clear();
   }
+
+  emit(event: string, ...args: any[]) {
+    if (this.listeners.has(event)) {
+      this.listeners.get(event)?.forEach((listener) => listener(...args));
+    }
+  }
 }
-
-// Export the mock classes for use in tests
-export { MockQueue, MockWorker, MockQueueEvents };
-
-// Clean up mock data after each test
-afterEach(() => {
-  // Reset any stored queue data
-});

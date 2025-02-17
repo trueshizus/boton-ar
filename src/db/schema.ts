@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { sqliteTable, text, integer, blob } from "drizzle-orm/sqlite-core";
+import { blob, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 const timestamps = {
   updated_at: text("updated_at")
@@ -12,28 +12,29 @@ const timestamps = {
 };
 
 export const syncStatusTable = sqliteTable("sync_status", {
-  id: integer("id").primaryKey(),
+  id: integer("id").primaryKey({ autoIncrement: true }),
   subreddit: text("subreddit")
     .notNull()
     .references(() => trackedSubredditsTable.subreddit),
-  lastOffset: text("last_offset"),
-  lastSyncAt: text("last_sync_at"),
-  ...timestamps,
-});
-
-export const modqueueTable = sqliteTable("modqueue", {
-  id: integer("id").primaryKey(),
-  subreddit: text("subreddit")
-    .notNull()
-    .references(() => trackedSubredditsTable.subreddit),
-  thingId: text("thing_id").notNull().unique(),
-  data: blob({ mode: "json" }).notNull(),
+  last_offset: text("last_offset"),
+  last_sync_at: text("last_sync_at"),
   ...timestamps,
 });
 
 export const trackedSubredditsTable = sqliteTable("tracked_subreddits", {
-  id: integer("id").primaryKey(),
+  id: integer("id").primaryKey({ autoIncrement: true }),
   subreddit: text("subreddit").notNull().unique(),
-  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  is_active: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  ...timestamps,
+});
+
+// Define modqueueTable *once*, including all columns.
+export const modqueueItemsTable = sqliteTable("modqueue_items", {
+  id: integer("id").notNull().primaryKey({ autoIncrement: true }),
+  subreddit: text("subreddit").notNull(),
+  author: text("author").notNull(),
+  permalink: text("permalink"),
+  type: text("type").notNull(),
+  raw_data: blob("raw_data", { mode: "json" }),
   ...timestamps,
 });
