@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "BotonAr",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

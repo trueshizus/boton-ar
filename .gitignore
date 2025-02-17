@@ -175,5 +175,10 @@ dist
 .DS_Store
 *.sqlite
 
-# Drizzle cache
+# Drizzle
 drizzle/
+*.db
+*.db-journal
+
+# Bruno's files
+BotonAr/*

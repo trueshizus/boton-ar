@@ -4,16 +4,22 @@
   "type": "module",
   "scripts": {
     "dev": "bun --watch src/server.ts",
-    "run": "bun run src/server.ts"
+    "run": "bun run src/server.ts",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:reset": "rm -f botonar.sqlite && bun run db:push"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "^1.2.2",
+    "drizzle-kit": "^0.30.4"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
   "dependencies": {
     "adze": "^2.2.0",
+    "bullmq": "^5.41.1",
+    "drizzle-orm": "^0.39.3",
     "hono": "^4.7.1"
   }
 }
