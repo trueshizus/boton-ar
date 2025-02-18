@@ -95,6 +95,12 @@ const createApiRequest = (credentials: Credentials) => {
     }
 
     try {
+      logger.debug("Fetching", {
+        url: url.toString(),
+        method,
+        headers,
+        body: method === "POST" ? body : undefined,
+      });
       const response = await fetch(url.toString(), {
         method,
         headers,
@@ -148,7 +154,7 @@ const createQueue = (
   };
 
   return (queueType: QueueType) => ({
-    posts: (params?: { after?: string }) =>
+    posts: (params?: { after?: string; limit?: number }) =>
       request<RedditListing>(getQueueEndpoint(queueType), "GET", params),
     post: (postId: string) => request(`/r/${subredditName}/comments/${postId}`),
     count: async () => {

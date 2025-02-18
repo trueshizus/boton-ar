@@ -18,14 +18,11 @@ app.get("/health", (c) => {
   return c.json({ message: "ok" });
 });
 
-// clears the db and redis
+// clears the db and redis, restarts workers
 app.post("/reset", async (c) => {
   await db.delete(trackedSubredditsTable);
   await db.delete(modqueueItemsTable);
   await db.delete(syncStatusTable);
-
-  await initialSyncQueue.clean();
-  await updateSyncQueue.clean();
 
   return c.json({ message: "ok" });
 });

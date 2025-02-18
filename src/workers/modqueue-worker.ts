@@ -35,7 +35,7 @@ export const initialSyncProcessor = async (data: InitialSyncJobData) => {
       .subreddit(subreddit)
       .mod()
       .modqueue()
-      .posts({ after: lastOffset });
+      .posts({ after: lastOffset, limit: 100 });
 
     logger.info(
       `Fetched ${modqueueData.data.children.length} items for initial sync of ${subreddit}`
@@ -78,7 +78,7 @@ export const initialSyncProcessor = async (data: InitialSyncJobData) => {
 
       await updateSyncQueue.queue.upsertJobScheduler(
         `update-${subreddit}`,
-        { every: 5000 },
+        { every: 10000 },
         {
           name: "subreddit-update",
           data: { subreddit },
