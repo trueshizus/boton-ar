@@ -2,11 +2,31 @@ import { Hono } from "hono";
 import logger from "./logger";
 import createClient from "./services/reddit-api-client";
 import subreddits from "./routes/subreddits";
+import {
+  modqueueItemsTable,
+  syncStatusTable,
+  trackedSubredditsTable,
+} from "./db/schema";
+import db from "./db";
+import { updateSyncQueue } from "./workers/modqueue-worker";
+import { initialSyncQueue } from "./workers/modqueue-worker";
 
 const app = new Hono();
 const client = createClient();
 
 app.get("/health", (c) => {
+  return c.json({ message: "ok" });
+});
+
+// clears the db and redis
+app.post("/reset", async (c) => {
+  await db.delete(trackedSubredditsTable);
+  await db.delete(modqueueItemsTable);
+  await db.delete(syncStatusTable);
+
+  await initialSyncQueue.clean();
+  await updateSyncQueue.clean();
+
   return c.json({ message: "ok" });
 });
 
@@ -84,7 +104,6 @@ app.get("/api/me", async (c) => {
 //   await next();
 // });
 
-// logger.info("🚀 Starting server...");
 app.route("/api/subreddits", subreddits);
 
 export default app;
