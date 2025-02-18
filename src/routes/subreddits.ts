@@ -256,6 +256,32 @@ app.get("/:subreddit/modmail/current", async (c) => {
   }
 });
 
+app.get("/:subreddit/posts/current", async (c) => {
+  const subreddit = c.req.param("subreddit");
+  const { limit = "2", offset = "0" } = c.req.query();
+
+  const subredditClient = client().subreddit(subreddit);
+  const posts = await subredditClient.queue("main").posts({
+    limit: parseInt(limit),
+  });
+
+  return c.json(posts);
+});
+
+app.get("/:subreddit/comments/current", async (c) => {
+  const subreddit = c.req.param("subreddit");
+  const { limit = "2", offset = "0" } = c.req.query();
+
+  const subredditClient = client().subreddit(subreddit);
+
+  const comments = await subredditClient.comments({
+    limit: parseInt(limit),
+    offset: parseInt(offset),
+  });
+
+  return c.json(comments);
+});
+
 process.on("SIGTERM", async () => {
   await initialSyncQueue.close();
   await updateSyncQueue.close();
