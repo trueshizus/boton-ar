@@ -220,10 +220,8 @@ app.get("/:subreddit/modqueue/current", async (c) => {
       `🔍 Fetching modqueue for ${subreddit} with offset ${offset || "empty"}`
     );
 
-    const subredditClient = client.subreddit(subreddit);
-    const modqueueListing = await subredditClient.modqueue({
-      after: offset,
-    });
+    const subredditClient = client().subreddit(subreddit);
+    const modqueueListing = await subredditClient.mod().modqueue().posts();
 
     return c.json(modqueueListing);
   } catch (err) {
@@ -232,6 +230,30 @@ app.get("/:subreddit/modqueue/current", async (c) => {
       error: err,
     });
     return c.json({ error: "Error fetching modqueue" }, 500);
+  }
+});
+
+app.get("/:subreddit/modmail/current", async (c) => {
+  try {
+    const subreddit = c.req.param("subreddit");
+    const { state, sort, limit, after } = c.req.query();
+
+    logger.info(`🔍 Fetching modmail for ${subreddit}`, {
+      state: state || "all",
+      sort: sort || "recent",
+      after: after || "empty",
+    });
+
+    const subredditClient = client().subreddit(subreddit);
+    const modmailConversations = await subredditClient.inbox().conversations();
+
+    return c.json(modmailConversations);
+  } catch (err) {
+    logger.error("❌ Error fetching modmail", {
+      subreddit: c.req.param("subreddit"),
+      error: err,
+    });
+    return c.json({ error: "Error fetching modmail" }, 500);
   }
 });
 

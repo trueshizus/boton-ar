@@ -11,6 +11,7 @@
       },
       "devDependencies": {
         "@types/bun": "^1.2.2",
+        "bun-bagel": "^1.1.0",
         "drizzle-kit": "^0.30.4",
       },
       "peerDependencies": {
@@ -108,6 +109,8 @@
     "buffer-from": ["buffer-from@1.1.2", "", {}, "sha512-E+XQCRwSbaaiChtv6k6Dwgc+bx+Bs6vuKJHHl5kox/BaKbhiXzqQOwK4cO22yElGp2OCmjwVhT3HmxgyPGnJfQ=="],
 
     "bullmq": ["bullmq@5.41.1", "", { "dependencies": { "cron-parser": "^4.9.0", "ioredis": "^5.4.1", "msgpackr": "^1.11.2", "node-abort-controller": "^3.1.1", "semver": "^7.5.4", "tslib": "^2.0.0", "uuid": "^9.0.0" } }, "sha512-bVQGR4ARM+wRJSw66114AKwO8SwS2ZF5TIvwQ9NL6Iepq6f8jnG8EjMMXL8J1pyR1eNz5bOikPeED/8ErLU6FQ=="],
+
+    "bun-bagel": ["bun-bagel@1.1.0", "", { "peerDependencies": { "typescript": "^5.0.0" } }, "sha512-XfBxWAf4jrGrN9xLvZMIsWHfXMLTu4GeZ+fyroVvfSOTj9qsB7tejMX6NMES5rvJMQXs0ksgU3eOF2La0sl4hQ=="],
 
     "bun-types": ["bun-types@1.2.2", "", { "dependencies": { "@types/node": "*", "@types/ws": "~8.5.10" } }, "sha512-RCbMH5elr9gjgDGDhkTTugA21XtJAy/9jkKe/G3WR2q17VPGhcquf9Sir6uay9iW+7P/BV0CAHA1XlHXMAVKHg=="],
 

@@ -1,0 +1,310 @@
+{
+  "conversations": {
+    "2i0uc9": {
+      "isAuto": true,
+      "participant": {
+        "isMod": false,
+        "isAdmin": false,
+        "name": "Touko_Sumi",
+        "isOp": true,
+        "isParticipant": true,
+        "isApproved": false,
+        "isHidden": false,
+        "id": 144358549885566,
+        "isDeleted": false
+      },
+      "objIds": [
+        {
+          "id": "3jwxyy",
+          "key": "messages"
+        }
+      ],
+      "isRepliable": true,
+      "lastUserUpdate": "2025-02-13T21:15:08.643000+0000",
+      "isInternal": false,
+      "lastModUpdate": "2025-02-13T20:53:39.845000+0000",
+      "authors": [
+        {
+          "isMod": true,
+          "isAdmin": false,
+          "name": "Robo-TINA",
+          "isOp": false,
+          "isParticipant": false,
+          "isApproved": false,
+          "isHidden": false,
+          "id": 1176837307822,
+          "isDeleted": false
+        },
+        {
+          "isMod": false,
+          "isAdmin": false,
+          "name": "Touko_Sumi",
+          "isOp": true,
+          "isParticipant": true,
+          "isApproved": false,
+          "isHidden": false,
+          "id": 144358549885566,
+          "isDeleted": false
+        }
+      ],
+      "lastUpdated": "2025-02-13T21:15:08.643000+0000",
+      "participantSubreddit": {},
+      "legacyFirstMessageId": "2ly2y04",
+      "state": 3,
+      "conversationType": "sr_user",
+      "lastUnread": "2025-02-13T00:00:00.000000+0000",
+      "owner": {
+        "displayName": "AskArgentina",
+        "type": "subreddit",
+        "id": "t5_3622g"
+      },
+      "subject": "u/Touko_Sumi is temporarily banned from r/AskArgentina",
+      "id": "2i0uc9",
+      "isHighlighted": false,
+      "numMessages": 2
+    },
+    "2hhhbo": {
+      "isAuto": false,
+      "participant": {
+        "isMod": false,
+        "isAdmin": false,
+        "name": "Little-Interest-1283",
+        "isOp": true,
+        "isParticipant": true,
+        "isApproved": false,
+        "isHidden": false,
+        "id": 149159656198406,
+        "isDeleted": false
+      },
+      "objIds": [
+        {
+          "id": "3j5mh9",
+          "key": "messages"
+        }
+      ],
+      "isRepliable": true,
+      "lastUserUpdate": "2025-02-04T04:30:15.045000+0000",
+      "isInternal": false,
+      "lastModUpdate": null,
+      "authors": [
+        {
+          "isMod": false,
+          "isAdmin": false,
+          "name": "Little-Interest-1283",
+          "isOp": true,
+          "isParticipant": true,
+          "isApproved": false,
+          "isHidden": false,
+          "id": 149159656198406,
+          "isDeleted": false
+        }
+      ],
+      "lastUpdated": "2025-02-04T04:30:15.045000+0000",
+      "participantSubreddit": {},
+      "legacyFirstMessageId": "2lk869z",
+      "state": 4,
+      "conversationType": "sr_user",
+      "lastUnread": "2025-02-04T00:00:00.000000+0000",
+      "owner": {
+        "displayName": "AskArgentina",
+        "type": "subreddit",
+        "id": "t5_3622g"
+      },
+      "subject": "[join] Request to join",
+      "id": "2hhhbo",
+      "isHighlighted": false,
+      "numMessages": 1
+    },
+    "2hgk8a": {
+      "isAuto": true,
+      "participant": {
+        "isMod": false,
+        "isAdmin": false,
+        "name": "Yarara9",
+        "isOp": true,
+        "isParticipant": true,
+        "isApproved": false,
+        "isHidden": false,
+        "id": 417627505800,
+        "isDeleted": false
+      },
+      "objIds": [
+        {
+          "id": "3j4bfi",
+          "key": "messages"
+        }
+      ],
+      "isRepliable": true,
+      "lastUserUpdate": "2025-02-03T19:27:11.867000+0000",
+      "isInternal": false,
+      "lastModUpdate": "2025-02-03T19:22:05.644000+0000",
+      "authors": [
+        {
+          "isMod": true,
+          "isAdmin": false,
+          "name": "Robo-TINA",
+          "isOp": false,
+          "isParticipant": false,
+          "isApproved": false,
+          "isHidden": false,
+          "id": 1176837307822,
+          "isDeleted": false
+        },
+        {
+          "isMod": false,
+          "isAdmin": false,
+          "name": "Yarara9",
+          "isOp": true,
+          "isParticipant": true,
+          "isApproved": false,
+          "isHidden": false,
+          "id": 417627505800,
+          "isDeleted": false
+        }
+      ],
+      "lastUpdated": "2025-02-03T19:27:11.867000+0000",
+      "participantSubreddit": {},
+      "legacyFirstMessageId": "2ljl9f5",
+      "state": 3,
+      "conversationType": "sr_user",
+      "lastUnread": "2025-02-03T19:27:11.867000+0000",
+      "owner": {
+        "displayName": "AskArgentina",
+        "type": "subreddit",
+        "id": "t5_3622g"
+      },
+      "subject": "u/Yarara9 is temporarily banned from r/AskArgentina",
+      "id": "2hgk8a",
+      "isHighlighted": false,
+      "numMessages": 3
+    },
+    "2hoapq": {
+      "isAuto": true,
+      "participant": {
+        "isMod": false,
+        "isAdmin": false,
+        "name": "Shoebill23",
+        "isOp": false,
+        "isParticipant": true,
+        "isApproved": true,
+        "isHidden": false,
+        "id": 63210929999916,
+        "isDeleted": false
+      },
+      "objIds": [
+        {
+          "id": "3jf5x7",
+          "key": "messages"
+        }
+      ],
+      "isRepliable": true,
+      "lastUserUpdate": null,
+      "isInternal": false,
+      "lastModUpdate": "2025-02-07T12:21:44.238000+0000",
+      "authors": [
+        {
+          "isMod": false,
+          "isAdmin": false,
+          "name": "Shoebill23",
+          "isOp": false,
+          "isParticipant": true,
+          "isApproved": true,
+          "isHidden": false,
+          "id": 63210929999916,
+          "isDeleted": false
+        },
+        {
+          "isMod": true,
+          "isAdmin": false,
+          "name": "Shizus",
+          "isOp": true,
+          "isParticipant": false,
+          "isApproved": false,
+          "isHidden": false,
+          "id": 8028303,
+          "isDeleted": false
+        }
+      ],
+      "lastUpdated": "2025-02-07T12:21:44.238000+0000",
+      "participantSubreddit": {},
+      "legacyFirstMessageId": "2lozh0c",
+      "state": 0,
+      "conversationType": "sr_user",
+      "lastUnread": "2025-02-07T00:00:00.000000+0000",
+      "owner": {
+        "displayName": "AskArgentina",
+        "type": "subreddit",
+        "id": "t5_3622g"
+      },
+      "subject": "you are an approved user",
+      "id": "2hoapq",
+      "isHighlighted": false,
+      "numMessages": 1
+    },
+    "2hflxz": {
+      "isAuto": true,
+      "participant": {
+        "isMod": false,
+        "isAdmin": false,
+        "name": "Adventurous_Debate96",
+        "isOp": true,
+        "isParticipant": true,
+        "isApproved": false,
+        "isHidden": false,
+        "id": 2270147316171,
+        "isDeleted": false
+      },
+      "objIds": [
+        {
+          "id": "3j2zrn",
+          "key": "messages"
+        }
+      ],
+      "isRepliable": true,
+      "lastUserUpdate": "2025-02-03T08:25:54.517000+0000",
+      "isInternal": false,
+      "lastModUpdate": "2025-02-03T08:09:30.046000+0000",
+      "authors": [
+        {
+          "isMod": true,
+          "isAdmin": false,
+          "name": "Robo-TINA",
+          "isOp": false,
+          "isParticipant": false,
+          "isApproved": false,
+          "isHidden": false,
+          "id": 1176837307822,
+          "isDeleted": false
+        },
+        {
+          "isMod": false,
+          "isAdmin": false,
+          "name": "Adventurous_Debate96",
+          "isOp": true,
+          "isParticipant": true,
+          "isApproved": false,
+          "isHidden": false,
+          "id": 2270147316171,
+          "isDeleted": false
+        }
+      ],
+      "lastUpdated": "2025-02-03T08:25:54.517000+0000",
+      "participantSubreddit": {},
+      "legacyFirstMessageId": "2lixc57",
+      "state": 3,
+      "conversationType": "sr_user",
+      "lastUnread": "2025-02-03T00:00:00.000000+0000",
+      "owner": {
+        "displayName": "AskArgentina",
+        "type": "subreddit",
+        "id": "t5_3622g"
+      },
+      "subject": "Your ban from r/AskArgentina has changed",
+      "id": "2hflxz",
+      "isHighlighted": false,
+      "numMessages": 2
+    },
+    "viewerId": "t2_n6ikryib0",
+    "conversationIds": ["2i8gy9", "2i7zbu", "2i7z5q", "2i7z5q"]
+  }
+}

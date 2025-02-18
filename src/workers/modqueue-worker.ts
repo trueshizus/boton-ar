@@ -31,10 +31,11 @@ export const initialSyncProcessor = async (data: InitialSyncJobData) => {
     const lastOffset = syncStatus[0]?.last_offset ?? undefined;
     logger.debug(`Last offset for initial sync of ${subreddit}: ${lastOffset}`);
 
-    const modqueueData = await redditClient.subreddit(subreddit).modqueue({
-      after: lastOffset,
-      limit: 100,
-    });
+    const modqueueData = await redditClient()
+      .subreddit(subreddit)
+      .mod()
+      .modqueue()
+      .posts();
 
     logger.info(
       `Fetched ${modqueueData.data.children.length} items for initial sync of ${subreddit}`
@@ -116,10 +117,11 @@ export const updateSyncProcessor = async (data: UpdateSyncJobData) => {
 
     const lastOffset = syncStatus[0]?.last_offset ?? undefined;
 
-    const modqueueData = await redditClient.subreddit(subreddit).modqueue({
-      after: lastOffset,
-      limit: 100,
-    });
+    const modqueueData = await redditClient()
+      .subreddit(subreddit)
+      .mod()
+      .modqueue()
+      .posts();
 
     if (modqueueData.data.children.length > 0) {
       // Check which items are actually new

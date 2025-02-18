@@ -1,8 +1,11 @@
-import type { RedditListing } from "../types";
+import type {
+  RedditAbout,
+  RedditListing,
+  RedditMe,
+  ConversationsResponse,
+} from "../types";
 import { tokenManager } from "./token-manager";
 import logger from "../logger";
-
-const DEFAULT_LIMIT = 100;
 
 interface Credentials {
   clientId: string;
@@ -11,147 +14,14 @@ interface Credentials {
   password: string;
 }
 
-interface ModmailConversation {
-  id: string;
-  subject: string;
-  isAuto: boolean;
-  isHighlighted: boolean;
-  isInternal: boolean;
-  isRepliable: boolean;
-  state: string;
-  lastUpdated: string;
-  lastUserUpdate: string;
-}
+type QueueType = "main" | "modqueue" | "removed" | "user";
 
-class ConversationManager {
-  private client: RedditApiClient;
-  private conversationId: string;
+const USER_AGENT = "cli:botonar.local:v0.0.1 (by /u/BotonAr)";
 
-  constructor(client: RedditApiClient, conversationId: string) {
-    this.client = client;
-    this.conversationId = conversationId;
-  }
-
-  async approve(): Promise<void> {
-    await this.client.performModAction(this.conversationId, "approve");
-  }
-
-  async archive(): Promise<void> {
-    await this.client.performModAction(this.conversationId, "archive");
-  }
-
-  async disapprove(): Promise<void> {
-    await this.client.performModAction(this.conversationId, "disapprove");
-  }
-
-  async highlight(): Promise<void> {
-    await this.client.performModAction(this.conversationId, "highlight");
-  }
-
-  async mute(duration: number = 72): Promise<void> {
-    await this.client.performModAction(this.conversationId, "mute", {
-      duration,
-    });
-  }
-
-  async tempBan(duration: number): Promise<void> {
-    await this.client.performModAction(this.conversationId, "temp_ban", {
-      duration,
-    });
-  }
-
-  async unarchive(): Promise<void> {
-    await this.client.performModAction(this.conversationId, "unarchive");
-  }
-
-  async unban(): Promise<void> {
-    await this.client.performModAction(this.conversationId, "unban");
-  }
-
-  async unmute(): Promise<void> {
-    await this.client.performModAction(this.conversationId, "unmute");
-  }
-
-  async reply(body: string, isInternal: boolean = false): Promise<void> {
-    await this.client.replyToModmail(this.conversationId, body, isInternal);
-  }
-}
-
-class ModManager {
-  private client: RedditApiClient;
-  private subredditName: string;
-
-  constructor(client: RedditApiClient, subredditName: string) {
-    this.client = client;
-    this.subredditName = subredditName;
-  }
-
-  async inbox(
-    params: {
-      state?:
-        | "new"
-        | "inprogress"
-        | "mod"
-        | "notifications"
-        | "archived"
-        | "highlighted"
-        | "all";
-      sort?: "recent" | "unread" | "mod";
-      limit?: number;
-      after?: string;
-    } = {}
-  ): Promise<ModmailConversation[]> {
-    const response = await this.client.fetchModmailConversations(
-      this.subredditName,
-      params
-    );
-    return response.conversations.map(
-      (conv: any) => new ConversationManager(this.client, conv.id)
-    );
-  }
-
-  conversation(id: string): ConversationManager {
-    return new ConversationManager(this.client, id);
-  }
-}
-
-class SubredditManager {
-  private client: RedditApiClient;
-  private subredditName: string;
-
-  constructor(client: RedditApiClient, subredditName: string) {
-    this.client = client;
-    this.subredditName = subredditName;
-  }
-
-  async modqueue(
-    params: { after?: string; limit?: number } = {}
-  ): Promise<RedditListing> {
-    return this.client.getModqueue(
-      this.subredditName,
-      params.after,
-      params.limit
-    );
-  }
-
-  mod(): ModManager {
-    return new ModManager(this.client, this.subredditName);
-  }
-
-  // ... other subreddit methods can go here ...
-}
-
-export class RedditApiClient {
-  private credentials: Credentials;
-  private userAgent: string = "cli:botonar.local:v0.0.1 (by /u/BotonAr)";
-
-  constructor(credentials: Credentials) {
-    this.credentials = credentials;
-  }
-
-  private async obtainAccessToken(): Promise<void> {
+const createApiRequest = (credentials: Credentials) => {
+  const obtainAccessToken = async (): Promise<void> => {
     logger.info("🔑 Obtaining new Reddit access token");
-    const authString = `${this.credentials.clientId}:${this.credentials.clientSecret}`;
+    const authString = `${credentials.clientId}:${credentials.clientSecret}`;
     const authHeader = "Basic " + Buffer.from(authString).toString("base64");
 
     try {
@@ -159,61 +29,57 @@ export class RedditApiClient {
         "https://www.reddit.com/api/v1/access_token",
         {
           method: "POST",
-          body: new URLSearchParams({
-            grant_type: "password",
-            username: this.credentials.username,
-            password: this.credentials.password,
-          }),
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
             Authorization: authHeader,
           },
+          body: new URLSearchParams({
+            grant_type: "password",
+            username: credentials.username,
+            password: credentials.password,
+          }),
         }
       );
 
+      //console.log("Response", response); // Remove or comment out
+
       if (!response.ok) {
         const errText = await response.text();
-        logger.error("❌ Failed to obtain access token", {
-          status: response.status,
-          error: errText,
-        });
+        logger.error("Token fetch failed", { errText });
         throw new Error(`Error obtaining access token: ${errText}`);
       }
 
       const data = await response.json();
+      // Use tokenManager to store the token
       await tokenManager.set(data.access_token, data.expires_in);
-      logger.info("✅ Successfully obtained new access token");
+      logger.info("✅ Reddit access token acquired");
     } catch (error) {
       logger.error("❌ Error during token acquisition", { error });
       throw error;
     }
-  }
+  };
 
-  private async ensureAccessToken(): Promise<string> {
+  const ensureAccessToken = async (): Promise<string> => {
+    // Use tokenManager to retrieve the token
     const token = tokenManager.get();
     if (!token) {
-      await this.obtainAccessToken();
-      return tokenManager.get()!; // We just obtained it, so it's safe to assert.
+      await obtainAccessToken();
+      return tokenManager.get()!;
     }
     return token;
-  }
+  };
 
-  private async getAuthHeaders(): Promise<Record<string, string>> {
-    const token = await this.ensureAccessToken();
-    return {
-      Authorization: `Bearer ${token}`,
-      "User-Agent": this.userAgent,
-    };
-  }
-
-  private async request(
+  const request = async <T>(
     endpoint: string,
     method: "GET" | "POST" = "GET",
     params?: Record<string, any>,
-    body?: URLSearchParams
-  ): Promise<any> {
+    body?: URLSearchParams,
+    retryOnAuthFailure = true
+  ): Promise<T> => {
+    let token = await ensureAccessToken();
     const url = new URL(`https://oauth.reddit.com${endpoint}`);
 
+    // Attach any query parameters to the URL
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined) {
@@ -222,13 +88,11 @@ export class RedditApiClient {
       });
     }
 
-    logger.debug("🌐 Making Reddit API request", {
-      method,
-      endpoint,
-      params: params ? JSON.stringify(params) : undefined,
-    });
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${token}`,
+      "User-Agent": USER_AGENT,
+    };
 
-    const headers = await this.getAuthHeaders();
     if (method === "POST" && body) {
       headers["Content-Type"] = "application/x-www-form-urlencoded";
     }
@@ -240,179 +104,117 @@ export class RedditApiClient {
         body: method === "POST" ? body : undefined,
       });
 
-      logger.debug("📨 Received API response", {
-        status: response.status,
-        endpoint,
-      });
+      // If token expired (401), try to refresh once
+      if (response.status === 401 && retryOnAuthFailure) {
+        logger.warn(
+          "401 Unauthorized - refreshing token and retrying request..."
+        );
+        await obtainAccessToken();
+        // Avoid infinite loop by setting retryOnAuthFailure to false
+        return request(endpoint, method, params, body, false);
+      }
 
       if (!response.ok) {
         const errText = await response.text();
-        logger.error("❌ API request failed", {
-          status: response.status,
-          endpoint,
-          error: errText,
-        });
-        throw new Error(`API Error (${response.status}): ${errText}`);
+        throw new Error(
+          `API Error (${response.status}): ${errText} - endpoint: ${endpoint} - method: ${method}`
+        );
       }
 
-      const data = await response.json();
-      logger.debug("✅ API request completed successfully", { endpoint });
-      return data;
+      return await response.json();
     } catch (error) {
-      logger.error("❌ API request error", {
-        endpoint,
-        error,
-        method,
-      });
+      logger.error("❌ API request error", { endpoint, error, method });
       throw error;
     }
-  }
+  };
 
-  // Fetch the modqueue for a subreddit.
-  private async getSubredditModqueue(
-    subredditName: string,
-    after?: string,
-    limit?: number
-  ): Promise<RedditListing> {
-    const response = await this.request(
-      `/r/${subredditName}/about/modqueue`,
-      "GET",
-      {
-        limit: limit?.toString() ?? DEFAULT_LIMIT.toString(),
-        after: after,
-      }
-    );
-    return response;
-  }
+  return request;
+};
 
-  // Get information about the authenticated user.
-  async me(): Promise<any> {
-    logger.info("👤 Fetching authenticated user information");
-    try {
-      const response = await this.request("/api/v1/me");
-      logger.info("✅ Successfully retrieved user information");
-      return response;
-    } catch (error) {
-      logger.error("❌ Failed to fetch user information", { error });
-      throw error;
+const createQueue = (
+  request: ReturnType<typeof createApiRequest>,
+  subredditName: string
+) => {
+  const getQueueEndpoint = (queueType: QueueType) => {
+    switch (queueType) {
+      case "main":
+        return `/r/${subredditName}/new`;
+      case "modqueue":
+        return `/r/${subredditName}/about/modqueue`;
+      case "removed":
+        return `/r/${subredditName}/about/removed`;
+      case "user":
+        return `/r/${subredditName}/about/contributors`;
+      default:
+        throw new Error(`Unknown queue type: ${queueType}`);
     }
-  }
+  };
 
-  // Approve a thing (e.g. a post or comment) by its fullname.
-  async approve(thingName: string): Promise<any> {
-    logger.info("👍 Approving content", { thingName });
-    try {
-      const response = await this.request(
-        "/api/approve",
-        "POST",
-        undefined,
-        new URLSearchParams({ id: thingName })
-      );
-      logger.info("✅ Successfully approved content", { thingName });
-      return response;
-    } catch (error) {
-      logger.error("❌ Failed to approve content", { thingName, error });
-      throw error;
-    }
-  }
+  return (queueType: QueueType) => ({
+    posts: () => request<RedditListing>(getQueueEndpoint(queueType)),
+    post: (postId: string) => request(`/r/${subredditName}/comments/${postId}`),
+    count: async () => {
+      const data = await request<RedditListing>(getQueueEndpoint(queueType));
+      return data?.data?.children?.length ?? 0;
+    },
+  });
+};
 
-  // Remove a thing (e.g. a post or comment) by its fullname.
-  async remove(thingName: string): Promise<any> {
-    logger.info("🚫 Removing content", { thingName });
-    try {
-      const response = await this.request(
-        "/api/remove",
-        "POST",
-        undefined,
-        new URLSearchParams({ id: thingName })
-      );
-      logger.info("✅ Successfully removed content", { thingName });
-      return response;
-    } catch (error) {
-      logger.error("❌ Failed to remove content", { thingName, error });
-      throw error;
-    }
-  }
+/**
+ * Create inbox operations for a subreddit (via Modmail, etc.).
+ */
 
-  // Return an object with methods to interact with a subreddit.
-  subreddit(name: string): SubredditManager {
-    return new SubredditManager(this, name);
-  }
+const createInbox = (
+  request: ReturnType<typeof createApiRequest>,
+  subredditName: string
+) => ({
+  conversations: (): Promise<ConversationsResponse> =>
+    request(`/api/mod/conversations`, "GET", {
+      entity: subredditName,
+    }),
+  conversation: (conversationId: string) =>
+    request(`/api/mod/conversations/${conversationId}`),
+});
 
-  // Get modmail conversations
-  async fetchModmailConversations(
-    subredditName: string,
-    params: {
-      state?: string; // new|inprogress|mod|notifications|archived|highlighted|all
-      sort?: string; // recent|unread|mod
-      limit?: number; // max 100
-      after?: string; // for pagination
-    } = {}
-  ): Promise<any> {
-    return this.request(
-      `/api/mod/conversations/${subredditName}`,
-      "GET",
-      params
-    );
-  }
-
-  // Get a specific modmail conversation
-  async fetchModmailConversation(
-    subredditName: string,
-    conversationId: string
-  ): Promise<any> {
-    return this.request(
-      `/api/mod/conversations/${subredditName}/${conversationId}`,
-      "GET"
-    );
-  }
-
-  // Reply to a modmail conversation
-  async replyToModmail(
-    conversationId: string,
-    body: string,
-    isInternal: boolean = false
-  ): Promise<any> {
-    const formData = new URLSearchParams({
-      body,
-      isInternal: isInternal.toString(),
-    });
-    return this.request(
-      `/api/mod/conversations/${conversationId}`,
+const createMod = (
+  request: ReturnType<typeof createApiRequest>,
+  subredditName: string
+) => ({
+  approve: (id: string) =>
+    request("/api/approve", "POST", undefined, new URLSearchParams({ id })),
+  remove: (id: string) =>
+    request("/api/remove", "POST", undefined, new URLSearchParams({ id })),
+  block: (userId: string) =>
+    request(
+      `/r/${subredditName}/api/block_user`,
       "POST",
       undefined,
-      formData
-    );
-  }
+      new URLSearchParams({ user: userId })
+    ),
+  modqueue: () => createQueue(request, subredditName)("modqueue"),
+  unmoderated: () => request(`/r/${subredditName}/about/unmoderated`),
+  removed: () => createQueue(request, subredditName)("removed"),
+});
 
-  public async performModAction(
-    conversationId: string,
-    action: string,
-    params: Record<string, any> = {}
-  ): Promise<any> {
-    const formData = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      formData.append(key, value.toString());
-    });
+const createSubreddit = (
+  request: ReturnType<typeof createApiRequest>,
+  name: string
+) => ({
+  about: () => Promise.resolve({ description: "not_implemented" }), //request<RedditAbout>(`/r/${name}/about`),
+  config: () => Promise.resolve({ description: "not_implemented" }), //request(`/r/${name}/api/site_admin`),
+  queue: (queueType: QueueType) => createQueue(request, name)(queueType),
+  inbox: () => createInbox(request, name),
+  mod: () => createMod(request, name),
+});
 
-    return this.request(
-      `/api/mod/conversations/${conversationId}/${action}`,
-      "POST",
-      undefined,
-      formData
-    );
-  }
+const createRedditClient = (credentials: Credentials) => {
+  const request = createApiRequest(credentials);
+  return {
+    subreddit: (name: string) => createSubreddit(request, name),
+    me: () => request<RedditMe>("/api/v1/me"),
+  };
+};
 
-  public async getModqueue(
-    subredditName: string,
-    after?: string,
-    limit?: number
-  ): Promise<RedditListing> {
-    return this.getSubredditModqueue(subredditName, after, limit);
-  }
-}
-
-// Load credentials from environment variables.
 const credentials: Credentials = {
   clientId: process.env.REDDIT_CLIENT_ID!,
   clientSecret: process.env.REDDIT_CLIENT_SECRET!,
@@ -420,6 +222,4 @@ const credentials: Credentials = {
   password: process.env.REDDIT_PASSWORD!,
 };
 
-const client = new RedditApiClient(credentials);
-
-export default client;
+export default () => createRedditClient(credentials);
