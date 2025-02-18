@@ -1,6 +1,8 @@
 import { sql } from "drizzle-orm";
 import { blob, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
+export type SyncType = "modqueue" | "modmail" | "comments" | "posts";
+
 const timestamps = {
   updated_at: text("updated_at")
     .notNull()
@@ -13,6 +15,9 @@ const timestamps = {
 
 export const syncStatusTable = sqliteTable("sync_status", {
   id: integer("id").primaryKey({ autoIncrement: true }),
+  type: text("type", {
+    enum: ["modqueue", "modmail", "comments", "posts"],
+  }).notNull(),
   subreddit: text("subreddit")
     .notNull()
     .references(() => trackedSubredditsTable.subreddit),
@@ -28,6 +33,26 @@ export const trackedSubredditsTable = sqliteTable("tracked_subreddits", {
 });
 
 export const modqueueItemsTable = sqliteTable("modqueue_items", {
+  id: integer("id").notNull().primaryKey({ autoIncrement: true }),
+  subreddit: text("subreddit").notNull(),
+  author: text("author").notNull(),
+  type: text("type").notNull(),
+  name: text("name").notNull(),
+  raw_data: blob("raw_data", { mode: "json" }),
+  ...timestamps,
+});
+
+export const commentsTable = sqliteTable("comments", {
+  id: integer("id").notNull().primaryKey({ autoIncrement: true }),
+  subreddit: text("subreddit").notNull(),
+  author: text("author").notNull(),
+  type: text("type").notNull(),
+  name: text("name").notNull(),
+  raw_data: blob("raw_data", { mode: "json" }),
+  ...timestamps,
+});
+
+export const postsTable = sqliteTable("posts", {
   id: integer("id").notNull().primaryKey({ autoIncrement: true }),
   subreddit: text("subreddit").notNull(),
   author: text("author").notNull(),

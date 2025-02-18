@@ -24,7 +24,12 @@ export const initialSyncProcessor = async (data: InitialSyncJobData) => {
     const syncStatus = await db
       .select()
       .from(syncStatusTable)
-      .where(eq(syncStatusTable.subreddit, subreddit))
+      .where(
+        and(
+          eq(syncStatusTable.subreddit, subreddit),
+          eq(syncStatusTable.type, "modqueue")
+        )
+      )
       .orderBy(desc(syncStatusTable.created_at))
       .limit(1);
 
@@ -63,6 +68,7 @@ export const initialSyncProcessor = async (data: InitialSyncJobData) => {
       await db.insert(syncStatusTable).values({
         subreddit,
         last_offset: modqueueData.data.after,
+        type: "modqueue",
       });
 
       // Queue next page with delay
@@ -111,7 +117,12 @@ export const updateSyncProcessor = async (data: UpdateSyncJobData) => {
     const syncStatus = await db
       .select()
       .from(syncStatusTable)
-      .where(eq(syncStatusTable.subreddit, subreddit))
+      .where(
+        and(
+          eq(syncStatusTable.subreddit, subreddit),
+          eq(syncStatusTable.type, "modqueue")
+        )
+      )
       .orderBy(desc(syncStatusTable.created_at))
       .limit(1);
 
@@ -167,6 +178,7 @@ export const updateSyncProcessor = async (data: UpdateSyncJobData) => {
       await db.insert(syncStatusTable).values({
         subreddit,
         last_offset: modqueueData.data.after,
+        type: "modqueue",
       });
 
       logger.debug(
