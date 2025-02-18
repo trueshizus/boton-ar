@@ -1,15 +1,13 @@
 import { Hono } from "hono";
-import logger from "./logger";
-import createClient from "./services/reddit-api-client";
-import subreddits from "./routes/subreddits";
+import db from "./db";
 import {
   modqueueItemsTable,
   syncStatusTable,
   trackedSubredditsTable,
 } from "./db/schema";
-import db from "./db";
-import { updateSyncQueue } from "./workers/modqueue-worker";
-import { initialSyncQueue } from "./workers/modqueue-worker";
+import logger from "./logger";
+import subreddits from "./routes/subreddits";
+import createClient from "./services/reddit-api-client";
 
 const app = new Hono();
 const client = createClient();
