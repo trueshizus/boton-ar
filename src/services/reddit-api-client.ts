@@ -209,7 +209,7 @@ const createSubreddit = (
   queue: (queueType: QueueType) => createQueue(request, name)(queueType),
   inbox: () => createInbox(request, name),
   mod: () => createMod(request, name),
-  comments: (params?: { limit?: number; offset?: number }) =>
+  comments: (params?: { limit?: number; after?: string }) =>
     request<RedditListing>(`/r/${name}/comments.json`, "GET", params),
 });
 

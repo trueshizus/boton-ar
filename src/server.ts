@@ -2,8 +2,10 @@ import { Hono } from "hono";
 import db from "./db";
 import {
   modqueueItemsTable,
+  postsTable,
   syncStatusTable,
   trackedSubredditsTable,
+  commentsTable,
 } from "./db/schema";
 import logger from "./logger";
 import subreddits from "./routes/subreddits";
@@ -21,6 +23,8 @@ app.post("/reset", async (c) => {
   await db.delete(trackedSubredditsTable);
   await db.delete(modqueueItemsTable);
   await db.delete(syncStatusTable);
+  await db.delete(commentsTable);
+  await db.delete(postsTable);
 
   return c.json({ message: "ok" });
 });

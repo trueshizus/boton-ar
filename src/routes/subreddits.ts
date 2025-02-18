@@ -10,6 +10,10 @@ import logger from "../logger";
 import client from "../services/reddit-api-client";
 
 import { initialSyncQueue, updateSyncQueue } from "../workers/modqueue-worker";
+import {
+  initialSyncQueue as commentsInitialSyncQueue,
+  updateSyncQueue as commentsUpdateSyncQueue,
+} from "../workers/comments-worker";
 
 const app = new Hono();
 
@@ -69,8 +73,9 @@ app.post("/", async (c) => {
       .values({ subreddit })
       .returning();
 
-    // Add to initial sync queue
+    // Add to initial sync queues
     await initialSyncQueue.add({ subreddit });
+    await commentsInitialSyncQueue.add({ subreddit });
 
     logger.info(`Added new subreddit ${subreddit} for initial sync`);
 
@@ -117,10 +122,12 @@ app.delete("/", async (c) => {
     // First, remove any pending or recurring jobs for this subreddit
     logger.info(`Removing queue jobs for subreddit: ${subreddit}`);
 
-    // Get all jobs from both queues and remove them
+    // Get all jobs from all queues and remove them
     const jobs = await Promise.all([
       initialSyncQueue.getJobs(),
       updateSyncQueue.getJobs(),
+      commentsInitialSyncQueue.getJobs(),
+      commentsUpdateSyncQueue.getJobs(),
     ]);
 
     // Remove jobs that match this subreddit
@@ -270,13 +277,13 @@ app.get("/:subreddit/posts/current", async (c) => {
 
 app.get("/:subreddit/comments/current", async (c) => {
   const subreddit = c.req.param("subreddit");
-  const { limit = "2", offset = "0" } = c.req.query();
+  const { limit = "2", offset } = c.req.query();
 
   const subredditClient = client().subreddit(subreddit);
 
   const comments = await subredditClient.comments({
     limit: parseInt(limit),
-    offset: parseInt(offset),
+    after: offset,
   });
 
   return c.json(comments);

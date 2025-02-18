@@ -7,7 +7,7 @@
     "run": "bun run src/server.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:reset": "rm -f botonar.sqlite && bun run db:push"
+    "db:reset": "rm -f botonar.sqlite && bun run db:push && bunx drizzle-kit generate"
   },
   "devDependencies": {
     "@types/bun": "^1.2.2",
