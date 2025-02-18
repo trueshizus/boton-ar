@@ -10,13 +10,10 @@ import {
 import logger from "./logger";
 import subreddits from "./routes/subreddits";
 import createClient from "./services/reddit-api-client";
+import dashboard from "./dashboard";
 
 const app = new Hono();
 const client = createClient();
-
-app.get("/", async (c) => {
-  return c.render("<div>Hello</div>");
-});
 
 app.get("/health", (c) => {
   return c.json({ message: "ok" });
@@ -108,5 +105,6 @@ app.get("/api/me", async (c) => {
 // });
 
 app.route("/api/subreddits", subreddits);
+app.route("/", dashboard);
 
 export default app;
