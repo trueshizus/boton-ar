@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { blob, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export type SyncType = "modqueue" | "modmail" | "comments" | "posts";
+export type ModerationStatus = "pending" | "approved" | "removed" | "ignored";
 
 const timestamps = {
   updated_at: text("updated_at")
@@ -39,6 +40,11 @@ export const modqueueItemsTable = sqliteTable("modqueue_items", {
   type: text("type").notNull(),
   name: text("name").notNull(),
   raw_data: blob("raw_data", { mode: "json" }),
+  status: text("status", {
+    enum: ["pending", "approved", "removed", "ignored"],
+  })
+    .notNull()
+    .default("pending"),
   ...timestamps,
 });
 

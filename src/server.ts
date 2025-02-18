@@ -14,6 +14,10 @@ import createClient from "./services/reddit-api-client";
 const app = new Hono();
 const client = createClient();
 
+app.get("/", async (c) => {
+  return c.render("<div>Hello</div>");
+});
+
 app.get("/health", (c) => {
   return c.json({ message: "ok" });
 });

@@ -221,13 +221,19 @@ app.get("/:subreddit/modqueue", async (c) => {
 app.get("/:subreddit/modqueue/current", async (c) => {
   try {
     const subreddit = c.req.param("subreddit");
-    const { offset } = c.req.query();
+    const { offset, limit } = c.req.query();
     logger.info(
       `🔍 Fetching modqueue for ${subreddit} with offset ${offset || "empty"}`
     );
 
     const subredditClient = client().subreddit(subreddit);
-    const modqueueListing = await subredditClient.mod().modqueue().posts();
+    const modqueueListing = await subredditClient
+      .mod()
+      .modqueue()
+      .posts({
+        limit: parseInt(limit),
+        after: offset,
+      });
 
     return c.json(modqueueListing);
   } catch (err) {

@@ -5,9 +5,13 @@ meta {
 }
 
 get {
-  url: {{BASE_URL}}/api/subreddits/:subreddit/modqueue/current
+  url: {{BASE_URL}}/api/subreddits/:subreddit/modqueue/current?limit=1
   body: none
   auth: none
+}
+
+params:query {
+  limit: 1
 }
 
 params:path {
