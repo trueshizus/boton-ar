@@ -7,7 +7,7 @@ const mockFetch = (input: RequestInfo | URL, init?: RequestInit) => {
   mock("/*", {
     response: {
       status: 501,
-      data: "Not mocked yet",
+      data: { message: "GET endpoint not mocked" },
     },
   });
 
@@ -15,7 +15,7 @@ const mockFetch = (input: RequestInfo | URL, init?: RequestInit) => {
     method: "POST",
     response: {
       status: 200,
-      data: "test",
+      data: { message: "POST endpoint not mocked" },
     },
   });
 

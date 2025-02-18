@@ -1,12 +1,10 @@
 import { Hono } from "hono";
 import logger from "./logger";
-import client from "./services/reddit-api-client";
-
-import db from "./db";
-import { syncStatusTable } from "./db/schema";
+import createClient from "./services/reddit-api-client";
 import subreddits from "./routes/subreddits";
 
 const app = new Hono();
+const client = createClient();
 
 app.get("/health", (c) => {
   return c.json({ message: "ok" });

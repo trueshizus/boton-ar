@@ -1,4 +1,4 @@
-export const mockClient = (credentials: any) => ({
+const mockClient = (credentials: any) => ({
   subreddit: (name: string) => ({
     about: () =>
       Promise.resolve({
@@ -78,3 +78,5 @@ export const mockClient = (credentials: any) => ({
   }),
   me: () => Promise.resolve({ name: "MockUser", karma: 1000 }),
 });
+
+export default mockClient;

@@ -41,8 +41,6 @@ const createApiRequest = (credentials: Credentials) => {
         }
       );
 
-      //console.log("Response", response); // Remove or comment out
-
       if (!response.ok) {
         const errText = await response.text();
         logger.error("Token fetch failed", { errText });
@@ -50,6 +48,7 @@ const createApiRequest = (credentials: Credentials) => {
       }
 
       const data = await response.json();
+
       // Use tokenManager to store the token
       await tokenManager.set(data.access_token, data.expires_in);
       logger.info("✅ Reddit access token acquired");
@@ -61,11 +60,13 @@ const createApiRequest = (credentials: Credentials) => {
 
   const ensureAccessToken = async (): Promise<string> => {
     // Use tokenManager to retrieve the token
+
     const token = tokenManager.get();
     if (!token) {
       await obtainAccessToken();
       return tokenManager.get()!;
     }
+
     return token;
   };
 
@@ -77,6 +78,7 @@ const createApiRequest = (credentials: Credentials) => {
     retryOnAuthFailure = true
   ): Promise<T> => {
     let token = await ensureAccessToken();
+
     const url = new URL(`https://oauth.reddit.com${endpoint}`);
 
     // Attach any query parameters to the URL
@@ -222,4 +224,11 @@ const credentials: Credentials = {
   password: process.env.REDDIT_PASSWORD!,
 };
 
-export default () => createRedditClient(credentials);
+let redditClientInstance: ReturnType<typeof createRedditClient> | null = null;
+
+export default () => {
+  if (!redditClientInstance) {
+    redditClientInstance = createRedditClient(credentials);
+  }
+  return redditClientInstance;
+};

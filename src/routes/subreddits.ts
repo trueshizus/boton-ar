@@ -15,7 +15,6 @@ const app = new Hono();
 
 app.use("/:subreddit/*", async (c, next) => {
   const subreddit = c.req.param("subreddit");
-
   const existing = await db
     .select()
     .from(trackedSubredditsTable)

@@ -63,7 +63,7 @@ const mockRedditApi = () => {
     method: "POST",
     response: {
       status: 200,
-      data: "test",
+      data: accessTokenFixture,
     },
   });
 
@@ -75,6 +75,13 @@ const mockRedditApi = () => {
   });
 
   mock("https://oauth.reddit.com/r/AskArgentina/about/modqueue", {
+    response: {
+      status: 200,
+      data: modqueueMock,
+    },
+  });
+
+  mock("https://oauth.reddit.com/r/testsubreddit/about/modqueue", {
     response: {
       status: 200,
       data: modqueueMock,

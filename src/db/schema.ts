@@ -27,7 +27,6 @@ export const trackedSubredditsTable = sqliteTable("tracked_subreddits", {
   ...timestamps,
 });
 
-// Define modqueueTable *once*, including all columns.
 export const modqueueItemsTable = sqliteTable("modqueue_items", {
   id: integer("id").notNull().primaryKey({ autoIncrement: true }),
   subreddit: text("subreddit").notNull(),
