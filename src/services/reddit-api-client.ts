@@ -1,11 +1,6 @@
-import type {
-  RedditAbout,
-  RedditListing,
-  RedditMe,
-  ConversationsResponse,
-} from "../types";
-import { tokenManager } from "./token-manager";
 import logger from "../logger";
+import type { ConversationsResponse, RedditListing, RedditMe } from "../types";
+import { tokenManager } from "./token-manager";
 
 interface Credentials {
   clientId: string;
@@ -153,7 +148,8 @@ const createQueue = (
   };
 
   return (queueType: QueueType) => ({
-    posts: () => request<RedditListing>(getQueueEndpoint(queueType)),
+    posts: (params?: { after?: string }) =>
+      request<RedditListing>(getQueueEndpoint(queueType), "GET", params),
     post: (postId: string) => request(`/r/${subredditName}/comments/${postId}`),
     count: async () => {
       const data = await request<RedditListing>(getQueueEndpoint(queueType));

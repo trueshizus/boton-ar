@@ -35,7 +35,7 @@ export const initialSyncProcessor = async (data: InitialSyncJobData) => {
       .subreddit(subreddit)
       .mod()
       .modqueue()
-      .posts();
+      .posts({ after: lastOffset });
 
     logger.info(
       `Fetched ${modqueueData.data.children.length} items for initial sync of ${subreddit}`
@@ -121,7 +121,7 @@ export const updateSyncProcessor = async (data: UpdateSyncJobData) => {
       .subreddit(subreddit)
       .mod()
       .modqueue()
-      .posts();
+      .posts({ after: lastOffset });
 
     if (modqueueData.data.children.length > 0) {
       // Check which items are actually new
