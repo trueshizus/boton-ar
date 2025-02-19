@@ -1,11 +1,11 @@
+import { eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import type { FC } from "hono/jsx";
-import { eq, sql } from "drizzle-orm";
 import db from "./db";
 import {
-  trackedSubredditsTable,
-  modqueueItemsTable,
   commentsTable,
+  modqueueItemsTable,
+  trackedSubredditsTable,
 } from "./db/schema";
 
 const app = new Hono();
@@ -43,6 +43,31 @@ const Layout: FC = (props) => {
       <head>
         <title>BotonAr Dashboard</title>
         <script src="https://cdn.tailwindcss.com"></script>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+            document.addEventListener('DOMContentLoaded', () => {
+              const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+              const ws = new WebSocket(\`\${protocol}//\${window.location.host}/ws\`);
+              
+              ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.current_time) {
+                  document.getElementById('time-display').textContent = data.current_time;
+                }
+              };
+
+              ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+              };
+
+              ws.onclose = () => {
+                console.log('WebSocket connection closed');
+              };
+            });
+          `,
+          }}
+        />
       </head>
       <body class="bg-gray-100">
         <div class="container mx-auto px-4 py-8">{props.children}</div>
@@ -228,6 +253,13 @@ const Dashboard: FC<{ data: DashboardData }> = ({ data }) => {
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div class="bg-white p-4 rounded-lg shadow">
+        <h2 class="text-xl font-semibold mb-2">Server Time</h2>
+        <p id="time-display" class="text-2xl font-bold">
+          --:--
+        </p>
       </div>
     </Layout>
   );

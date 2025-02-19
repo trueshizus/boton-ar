@@ -1,16 +1,18 @@
 import { Hono } from "hono";
+import { createBunWebSocket } from "hono/bun";
+import dashboard from "./dashboard";
 import db from "./db";
 import {
+  commentsTable,
   modqueueItemsTable,
   postsTable,
   syncStatusTable,
   trackedSubredditsTable,
-  commentsTable,
 } from "./db/schema";
 import logger from "./logger";
 import subreddits from "./routes/subreddits";
 import createClient from "./services/reddit-api-client";
-import dashboard from "./dashboard";
+import { websocketManager } from "./routes/websocket"; // Import the manager
 
 const app = new Hono();
 const client = createClient();
@@ -107,4 +109,33 @@ app.get("/api/me", async (c) => {
 app.route("/api/subreddits", subreddits);
 app.route("/", dashboard);
 
-export default app;
+const { upgradeWebSocket, websocket } = createBunWebSocket();
+
+app.get(
+  "/ws",
+  upgradeWebSocket(() => {
+    return {
+      onOpen(_event, ws) {
+        console.log("WebSocket connection opened");
+        websocketManager.addConnection(ws); // Add to the manager
+        ws.send(
+          JSON.stringify({ current_time: new Date().toLocaleTimeString() })
+        );
+      },
+
+      onMessage(ws, message) {
+        console.log("Received message:", message);
+      },
+
+      onClose(_event, ws) {
+        console.log("WebSocket connection closed");
+        websocketManager.removeConnection(ws);
+      },
+    };
+  })
+);
+
+export default {
+  fetch: app.fetch,
+  websocket,
+};

@@ -5,27 +5,23 @@ import db from "../db";
 import { commentsTable, syncStatusTable } from "../db/schema";
 import logger from "../logger";
 
-type InitialSyncJobData = {
+type CommentsSyncJobData = {
   subreddit: string;
   after?: string;
 };
 
-type UpdateSyncJobData = {
-  subreddit: string;
-};
-
-// Processor for initial full sync of comments
-export const initialSyncProcessor = async (data: InitialSyncJobData) => {
+// Combined processor for both initial and update syncs
+export const commentsSyncProcessor = async (data: CommentsSyncJobData) => {
   try {
     const { subreddit, after } = data;
-    logger.info(`Starting initial comments sync for subreddit: ${subreddit}`);
+    logger.info(`Running comments sync for subreddit: ${subreddit}`);
 
     const commentsData = await redditClient()
       .subreddit(subreddit)
       .comments({ after, limit: 100 });
 
     logger.info(
-      `Fetched ${commentsData.data.children.length} comments for initial sync of ${subreddit}`
+      `Fetched ${commentsData.data.children.length} comments for ${subreddit}`
     );
 
     if (commentsData.data.children.length > 0) {
@@ -37,107 +33,43 @@ export const initialSyncProcessor = async (data: InitialSyncJobData) => {
         raw_data: item,
       }));
 
-      await db
+      const result = await db
         .insert(commentsTable)
         .values(valuesToInsert)
-        .onConflictDoNothing();
+        .onConflictDoNothing()
+        .returning({ insertedId: commentsTable.id });
+
+      const insertedCount = result.length;
+      const allItemsWereNew = insertedCount === valuesToInsert.length;
+
       logger.info(
-        `Inserted ${valuesToInsert.length} comments for initial sync of ${subreddit}`
-      );
-    }
-
-    if (commentsData.data.after) {
-      await initialSyncQueue.add(
-        { subreddit, after: commentsData.data.after },
-        { delay: 1000 } // 1s delay to respect rate limits
-      );
-    } else {
-      // Initial sync complete, set up recurring updates
-      logger.info(
-        `Initial comments sync completed for ${subreddit}, setting up update scheduler`
+        `Inserted ${insertedCount}/${valuesToInsert.length} comments for ${subreddit}`
       );
 
-      await updateSyncQueue.queue.upsertJobScheduler(
-        `comments-update-${subreddit}`,
-        { every: 10000 }, // Every 10 seconds
-        {
-          name: "subreddit-comments-update",
-          data: { subreddit },
-          opts: {
-            attempts: 3,
-            backoff: {
-              type: "exponential",
-              delay: 1000,
-            },
-          },
-        }
-      );
-    }
-  } catch (error) {
-    logger.error("Error in comments initialSyncProcessor", {
-      error,
-      subreddit: data.subreddit,
-    });
-    throw error;
-  }
-};
-
-// Processor for regular comment updates
-export const updateSyncProcessor = async (data: UpdateSyncJobData) => {
-  try {
-    const { subreddit } = data;
-    logger.debug(`Running comments update sync for subreddit: ${subreddit}`);
-
-    const commentsData = await redditClient().subreddit(subreddit).comments();
-
-    if (commentsData.data.children.length > 0) {
-      // Check which comments are actually new
-      const names = commentsData.data.children.map((item) => item.data.name);
-
-      const existingItems = await db
-        .select({ name: commentsTable.name })
-        .from(commentsTable)
-        .where(
-          and(
-            eq(commentsTable.subreddit, subreddit),
-            inArray(commentsTable.name, names)
-          )
+      if (commentsData.data.after) {
+        // Queue next page with adaptive delay
+        const delay = allItemsWereNew ? 1000 : 20000; // 1s or 20s delay
+        await commentsSyncQueue.add(
+          { subreddit, after: commentsData.data.after },
+          { delay }
         );
 
-      const existingNames = new Set(existingItems.map((item) => item.name));
-
-      const newItems = commentsData.data.children.filter(
-        (item) => !existingNames.has(item.data.name)
-      );
-
-      if (newItems.length > 0) {
-        logger.info(`Found ${newItems.length} new comments for ${subreddit}`);
-
-        const valuesToInsert = newItems.map((item) => ({
-          subreddit,
-          author: item.data.author,
-          name: item.data.name,
-          type: item.kind,
-          raw_data: item,
-        }));
-
-        await db
-          .insert(commentsTable)
-          .values(valuesToInsert)
-          .onConflictDoNothing();
-      } else {
-        logger.debug(`No new comments found for ${subreddit}`);
+        logger.debug(
+          `Queued next sync for ${subreddit} with ${delay}ms delay (${
+            allItemsWereNew ? "all new" : "some existing"
+          } items)`
+        );
       }
-    }
 
-    if (commentsData.data.after) {
-      await updateSyncQueue.add(
-        { subreddit },
-        { delay: 1000 } // 1s delay to respect rate limits
-      );
+      // Update sync status
+      await db.insert(syncStatusTable).values({
+        subreddit,
+        last_offset: commentsData.data.after,
+        type: "comments",
+      });
     }
   } catch (error) {
-    logger.error("Error in comments updateSyncProcessor", {
+    logger.error("Error in commentsSyncProcessor", {
       error,
       subreddit: data.subreddit,
     });
@@ -145,15 +77,9 @@ export const updateSyncProcessor = async (data: UpdateSyncJobData) => {
   }
 };
 
-// Create two separate queues for comments
-export const initialSyncQueue = new QueueManager(
-  "comments-initial-sync",
-  initialSyncProcessor,
-  { maxParallel: 1 }
-);
-
-export const updateSyncQueue = new QueueManager(
-  "comments-updates",
-  updateSyncProcessor,
-  { maxParallel: 1 }
+// Single queue for all comment syncs
+export const commentsSyncQueue = new QueueManager(
+  "comments-sync",
+  commentsSyncProcessor,
+  { maxParallel: 1 } // Process one sync at a time
 );

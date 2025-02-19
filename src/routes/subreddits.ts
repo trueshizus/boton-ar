@@ -8,12 +8,11 @@ import {
 } from "../db/schema";
 import logger from "../logger";
 import client from "../services/reddit-api-client";
-
-import { modqueueSyncQueue } from "../workers/modqueue-worker";
 import {
-  initialSyncQueue as commentsInitialSyncQueue,
-  updateSyncQueue as commentsUpdateSyncQueue,
-} from "../workers/comments-worker";
+  modqueueSyncQueue,
+  postsSyncQueue,
+  commentsSyncQueue,
+} from "../workers";
 
 const app = new Hono();
 
@@ -73,9 +72,9 @@ app.post("/", async (c) => {
       .values({ subreddit })
       .returning();
 
-    // Add to initial sync queues
     await modqueueSyncQueue.add({ subreddit });
-    // await commentsInitialSyncQueue.add({ subreddit });
+    await postsSyncQueue.add({ subreddit });
+    await commentsSyncQueue.add({ subreddit });
 
     logger.info(`Added new subreddit ${subreddit} for initial sync`);
 
@@ -123,11 +122,7 @@ app.delete("/", async (c) => {
     logger.info(`Removing queue jobs for subreddit: ${subreddit}`);
 
     // Get all jobs from all queues and remove them
-    const jobs = await Promise.all([
-      modqueueSyncQueue.getJobs(),
-      commentsInitialSyncQueue.getJobs(),
-      commentsUpdateSyncQueue.getJobs(),
-    ]);
+    const jobs = await Promise.all([modqueueSyncQueue.getJobs()]);
 
     // Remove jobs that match this subreddit
     await Promise.all(
