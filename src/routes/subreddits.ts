@@ -9,7 +9,7 @@ import {
 import logger from "../logger";
 import client from "../services/reddit-api-client";
 
-import { initialSyncQueue, updateSyncQueue } from "../workers/modqueue-worker";
+import { modqueueSyncQueue } from "../workers/modqueue-worker";
 import {
   initialSyncQueue as commentsInitialSyncQueue,
   updateSyncQueue as commentsUpdateSyncQueue,
@@ -74,8 +74,8 @@ app.post("/", async (c) => {
       .returning();
 
     // Add to initial sync queues
-    await initialSyncQueue.add({ subreddit });
-    await commentsInitialSyncQueue.add({ subreddit });
+    await modqueueSyncQueue.add({ subreddit });
+    // await commentsInitialSyncQueue.add({ subreddit });
 
     logger.info(`Added new subreddit ${subreddit} for initial sync`);
 
@@ -124,8 +124,7 @@ app.delete("/", async (c) => {
 
     // Get all jobs from all queues and remove them
     const jobs = await Promise.all([
-      initialSyncQueue.getJobs(),
-      updateSyncQueue.getJobs(),
+      modqueueSyncQueue.getJobs(),
       commentsInitialSyncQueue.getJobs(),
       commentsUpdateSyncQueue.getJobs(),
     ]);
@@ -296,8 +295,9 @@ app.get("/:subreddit/comments/current", async (c) => {
 });
 
 process.on("SIGTERM", async () => {
-  await initialSyncQueue.close();
-  await updateSyncQueue.close();
+  await modqueueSyncQueue.close();
+  // await commentsInitialSyncQueue.close();
+  // await commentsUpdateSyncQueue.close();
 });
 
 export default app;

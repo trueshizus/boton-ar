@@ -7,43 +7,25 @@ import { modqueueItemsTable, syncStatusTable } from "../db/schema";
 import logger from "../logger";
 
 // Types for our different job payloads
-type InitialSyncJobData = {
+type ModqueueSyncJobData = {
   subreddit: string;
+  after?: string;
 };
 
-type UpdateSyncJobData = {
-  subreddit: string;
-};
-
-// Processor for initial full sync
-export const initialSyncProcessor = async (data: InitialSyncJobData) => {
+// Combined processor for both initial and update syncs
+export const modqueueSyncProcessor = async (data: ModqueueSyncJobData) => {
   try {
-    const { subreddit } = data;
-    logger.info(`Starting initial sync for subreddit: ${subreddit}`);
-
-    const syncStatus = await db
-      .select()
-      .from(syncStatusTable)
-      .where(
-        and(
-          eq(syncStatusTable.subreddit, subreddit),
-          eq(syncStatusTable.type, "modqueue")
-        )
-      )
-      .orderBy(desc(syncStatusTable.created_at))
-      .limit(1);
-
-    const lastOffset = syncStatus[0]?.last_offset ?? undefined;
-    logger.debug(`Last offset for initial sync of ${subreddit}: ${lastOffset}`);
+    const { subreddit, after } = data;
+    logger.info(`Running sync for subreddit: ${subreddit}`);
 
     const modqueueData = await redditClient()
       .subreddit(subreddit)
       .mod()
       .modqueue()
-      .posts({ after: lastOffset, limit: 100 });
+      .posts({ after, limit: 100 });
 
     logger.info(
-      `Fetched ${modqueueData.data.children.length} items for initial sync of ${subreddit}`
+      `Fetched ${modqueueData.data.children.length} items for ${subreddit}`
     );
 
     if (modqueueData.data.children.length > 0) {
@@ -55,138 +37,43 @@ export const initialSyncProcessor = async (data: InitialSyncJobData) => {
         raw_data: item,
       }));
 
-      await db
+      const result = await db
         .insert(modqueueItemsTable)
         .values(valuesToInsert)
-        .onConflictDoNothing();
+        .onConflictDoNothing()
+        .returning({ insertedId: modqueueItemsTable.id });
+
+      const insertedCount = result.length;
+      const allItemsWereNew = insertedCount === valuesToInsert.length;
+
       logger.info(
-        `Inserted ${valuesToInsert.length} items for initial sync of ${subreddit}`
-      );
-    }
-
-    if (modqueueData.data.after) {
-      await db.insert(syncStatusTable).values({
-        subreddit,
-        last_offset: modqueueData.data.after,
-        type: "modqueue",
-      });
-
-      // Queue next page with delay
-      await initialSyncQueue.add(
-        { subreddit },
-        { delay: 1000 } // 1s delay to respect rate limits
-      );
-    } else {
-      // Initial sync complete, set up recurring updates
-      logger.info(
-        `Initial sync completed for ${subreddit}, setting up update scheduler`
+        `Inserted ${insertedCount}/${valuesToInsert.length} items for ${subreddit}`
       );
 
-      await updateSyncQueue.queue.upsertJobScheduler(
-        `update-${subreddit}`,
-        { every: 10000 },
-        {
-          name: "subreddit-update",
-          data: { subreddit },
-          opts: {
-            attempts: 3,
-            backoff: {
-              type: "exponential",
-              delay: 1000,
-            },
-          },
-        }
-      );
-    }
-  } catch (error) {
-    logger.error("Error in initialSyncProcessor", {
-      error,
-      subreddit: data.subreddit,
-    });
-    throw error;
-  }
-};
-
-// Processor for regular updates
-export const updateSyncProcessor = async (data: UpdateSyncJobData) => {
-  try {
-    const { subreddit } = data;
-    logger.debug(`Running update sync for subreddit: ${subreddit}`);
-
-    // Get most recent sync status
-    const syncStatus = await db
-      .select()
-      .from(syncStatusTable)
-      .where(
-        and(
-          eq(syncStatusTable.subreddit, subreddit),
-          eq(syncStatusTable.type, "modqueue")
-        )
-      )
-      .orderBy(desc(syncStatusTable.created_at))
-      .limit(1);
-
-    const lastOffset = syncStatus[0]?.last_offset ?? undefined;
-
-    const modqueueData = await redditClient()
-      .subreddit(subreddit)
-      .mod()
-      .modqueue()
-      .posts({ after: lastOffset });
-
-    if (modqueueData.data.children.length > 0) {
-      // Check which items are actually new
-      const names = modqueueData.data.children.map((item) => item.data.name);
-
-      const existingItems = await db
-        .select({ name: modqueueItemsTable.name })
-        .from(modqueueItemsTable)
-        .where(
-          and(
-            eq(modqueueItemsTable.subreddit, subreddit),
-            inArray(modqueueItemsTable.name, names)
-          )
+      if (modqueueData.data.after) {
+        // Queue next page with adaptive delay
+        const delay = allItemsWereNew ? 1000 : 20000; // 1s or 20s delay
+        await modqueueSyncQueue.add(
+          { subreddit, after: modqueueData.data.after },
+          { delay }
         );
 
-      const existingNames = new Set(existingItems.map((item) => item.name));
-
-      const newItems = modqueueData.data.children.filter(
-        (item) => !existingNames.has(item.data.name)
-      );
-
-      if (newItems.length > 0) {
-        logger.info(`Found ${newItems.length} new items for ${subreddit}`);
-
-        const valuesToInsert = newItems.map((item) => ({
-          subreddit,
-          author: item.data.author,
-          name: item.data.name,
-          type: item.kind,
-          raw_data: item,
-        }));
-
-        await db
-          .insert(modqueueItemsTable)
-          .values(valuesToInsert)
-          .onConflictDoNothing();
-      } else {
-        logger.debug(`No new items found for ${subreddit}`);
+        logger.debug(
+          `Queued next sync for ${subreddit} with ${delay}ms delay (${
+            allItemsWereNew ? "all new" : "some existing"
+          } items)`
+        );
       }
-    }
 
-    if (modqueueData.data.after) {
+      // Update sync status
       await db.insert(syncStatusTable).values({
         subreddit,
         last_offset: modqueueData.data.after,
         type: "modqueue",
       });
-
-      logger.debug(
-        `Created new sync status for ${subreddit}, offset: ${modqueueData.data.after}`
-      );
     }
   } catch (error) {
-    logger.error("Error in updateSyncProcessor", {
+    logger.error("Error in modqueueSyncProcessor", {
       error,
       subreddit: data.subreddit,
     });
@@ -194,15 +81,9 @@ export const updateSyncProcessor = async (data: UpdateSyncJobData) => {
   }
 };
 
-// Create two separate queues
-export const initialSyncQueue = new QueueManager(
-  "modqueue-initial-sync",
-  initialSyncProcessor,
-  { maxParallel: 1 } // Process one initial sync at a time
-);
-
-export const updateSyncQueue = new QueueManager(
-  "modqueue-updates",
-  updateSyncProcessor,
-  { maxParallel: 1 } // Can handle multiple update syncs concurrently
+// Single queue for all modqueue syncs
+export const modqueueSyncQueue = new QueueManager(
+  "modqueue-sync",
+  modqueueSyncProcessor,
+  { maxParallel: 1 } // Process one sync at a time
 );

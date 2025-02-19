@@ -7,6 +7,7 @@ import logger from "../logger";
 
 type InitialSyncJobData = {
   subreddit: string;
+  after?: string;
 };
 
 type UpdateSyncJobData = {
@@ -16,29 +17,12 @@ type UpdateSyncJobData = {
 // Processor for initial full sync of comments
 export const initialSyncProcessor = async (data: InitialSyncJobData) => {
   try {
-    const { subreddit } = data;
+    const { subreddit, after } = data;
     logger.info(`Starting initial comments sync for subreddit: ${subreddit}`);
-
-    const syncStatus = await db
-      .select()
-      .from(syncStatusTable)
-      .where(
-        and(
-          eq(syncStatusTable.subreddit, subreddit),
-          eq(syncStatusTable.type, "comments")
-        )
-      )
-      .orderBy(desc(syncStatusTable.created_at))
-      .limit(1);
-
-    const lastOffset = syncStatus[0]?.last_offset ?? undefined;
-    logger.debug(
-      `Last offset for initial comments sync of ${subreddit}: ${lastOffset}`
-    );
 
     const commentsData = await redditClient()
       .subreddit(subreddit)
-      .comments({ after: lastOffset, limit: 100 });
+      .comments({ after, limit: 100 });
 
     logger.info(
       `Fetched ${commentsData.data.children.length} comments for initial sync of ${subreddit}`
@@ -63,15 +47,8 @@ export const initialSyncProcessor = async (data: InitialSyncJobData) => {
     }
 
     if (commentsData.data.after) {
-      await db.insert(syncStatusTable).values({
-        subreddit,
-        last_offset: commentsData.data.after,
-        type: "comments",
-      });
-
-      // Queue next page with delay
       await initialSyncQueue.add(
-        { subreddit },
+        { subreddit, after: commentsData.data.after },
         { delay: 1000 } // 1s delay to respect rate limits
       );
     } else {
@@ -111,23 +88,7 @@ export const updateSyncProcessor = async (data: UpdateSyncJobData) => {
     const { subreddit } = data;
     logger.debug(`Running comments update sync for subreddit: ${subreddit}`);
 
-    const syncStatus = await db
-      .select()
-      .from(syncStatusTable)
-      .where(
-        and(
-          eq(syncStatusTable.subreddit, subreddit),
-          eq(syncStatusTable.type, "comments")
-        )
-      )
-      .orderBy(desc(syncStatusTable.created_at))
-      .limit(1);
-
-    const lastOffset = syncStatus[0]?.last_offset ?? undefined;
-
-    const commentsData = await redditClient()
-      .subreddit(subreddit)
-      .comments({ after: lastOffset });
+    const commentsData = await redditClient().subreddit(subreddit).comments();
 
     if (commentsData.data.children.length > 0) {
       // Check which comments are actually new
@@ -170,14 +131,9 @@ export const updateSyncProcessor = async (data: UpdateSyncJobData) => {
     }
 
     if (commentsData.data.after) {
-      await db.insert(syncStatusTable).values({
-        subreddit,
-        last_offset: commentsData.data.after,
-        type: "comments",
-      });
-
-      logger.debug(
-        `Created new comments sync status for ${subreddit}, offset: ${commentsData.data.after}`
+      await updateSyncQueue.add(
+        { subreddit },
+        { delay: 1000 } // 1s delay to respect rate limits
       );
     }
   } catch (error) {
