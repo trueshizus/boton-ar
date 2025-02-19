@@ -1,48 +1,19 @@
 import { Hono } from "hono";
 import { createBunWebSocket } from "hono/bun";
+
+import api from "./api";
 import dashboard from "./dashboard";
-import db from "./db";
-import {
-  commentsTable,
-  modqueueItemsTable,
-  postsTable,
-  syncStatusTable,
-  trackedSubredditsTable,
-} from "./db/schema";
-import logger from "./logger";
-import subreddits from "./routes/subreddits";
-import createClient from "./services/reddit-api-client";
 import { websocketManager } from "./routes/websocket"; // Import the manager
+import createClient from "./services/reddit-api-client";
 
 const app = new Hono();
 const client = createClient();
 
-app.get("/health", (c) => {
+app.get("/api/health", (c) => {
   return c.json({ message: "ok" });
 });
 
 // clears the db and redis, restarts workers
-app.post("/reset", async (c) => {
-  await db.delete(trackedSubredditsTable);
-  await db.delete(modqueueItemsTable);
-  await db.delete(syncStatusTable);
-  await db.delete(commentsTable);
-  await db.delete(postsTable);
-
-  return c.json({ message: "ok" });
-});
-
-app.get("/api/me", async (c) => {
-  try {
-    logger.info("🔍 Fetching authenticated user data");
-    const me = await client.me();
-    logger.info("✅ Successfully fetched user data");
-    return c.json(me);
-  } catch (err) {
-    logger.error("❌ Error fetching user info", { error: err });
-    return c.json({ error: "Error fetching user info" }, 500);
-  }
-});
 
 // // Update approve endpoint to handle cache
 // app.post("/api/approve/:thing", async (c) => {
@@ -106,9 +77,6 @@ app.get("/api/me", async (c) => {
 //   await next();
 // });
 
-app.route("/api/subreddits", subreddits);
-app.route("/", dashboard);
-
 const { upgradeWebSocket, websocket } = createBunWebSocket();
 
 app.get(
@@ -134,6 +102,9 @@ app.get(
     };
   })
 );
+
+app.route("/", dashboard);
+app.route("/api", api);
 
 export default {
   fetch: app.fetch,
