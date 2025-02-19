@@ -13,6 +13,7 @@ import {
   postsSyncQueue,
   commentsSyncQueue,
 } from "../workers";
+import { websocketManager } from "./websocket";
 
 const app = new Hono();
 
@@ -77,6 +78,12 @@ app.post("/", async (c) => {
     await commentsSyncQueue.add({ subreddit });
 
     logger.info(`Added new subreddit ${subreddit} for initial sync`);
+
+    websocketManager.broadcast({
+      type: "subreddit_added",
+      subreddit: result[0].subreddit, // Send the name
+      // Add any other relevant data here
+    });
 
     return c.json(
       {

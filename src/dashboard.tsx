@@ -54,6 +54,9 @@ const Layout: FC = (props) => {
                 const data = JSON.parse(event.data);
                 if (data.current_time) {
                   document.getElementById('time-display').textContent = data.current_time;
+                } else if (data.type === 'subreddit_added') {
+                  // Handle the new subreddit event
+                  console.log('New subreddit added:', data.subreddit);
                 }
               };
 
